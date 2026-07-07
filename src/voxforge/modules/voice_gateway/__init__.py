@@ -1,0 +1,1 @@
+"""Voice gateway module."""
