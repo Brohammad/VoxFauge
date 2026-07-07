@@ -8,6 +8,7 @@ from voxforge.config import Settings, get_settings
 from voxforge.core.domain.auth import Principal
 from voxforge.core.events.bus import EventBus, get_event_bus
 from voxforge.core.exceptions import ForbiddenError, UnauthorizedError
+from voxforge.infrastructure.db.evaluation_repository import EvaluationRepository
 from voxforge.infrastructure.db.memory_repository import MemoryRepository
 from voxforge.infrastructure.db.session import get_db_session
 from voxforge.infrastructure.db.tool_repository import ToolCallRepository
@@ -20,6 +21,7 @@ from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
 from voxforge.infrastructure.tools.mcp_adapter import MCPToolAdapter
 from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
 from voxforge.modules.auth.application.service import AuthService
+from voxforge.modules.evaluation.application.service import EvaluationEngine
 from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
 from voxforge.modules.mcp_tool_router.application.router import ToolRouter
 from voxforge.modules.memory.application.service import MemoryService
@@ -133,6 +135,15 @@ def get_tool_router(
     return ToolRouter(registry, settings, repo)
 
 
+def get_evaluation_engine(
+    db: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+) -> EvaluationEngine | None:
+    if not settings.evaluation_enabled:
+        return None
+    return EvaluationEngine(EvaluationRepository(db), settings)
+
+
 def get_response_generator(
     llm: OpenAILLMProvider = Depends(get_llm_provider),
     settings: Settings = Depends(get_settings),
@@ -149,7 +160,14 @@ def get_pipeline(
     tts: CartesiaTTSProvider = Depends(get_tts_provider),
     settings: Settings = Depends(get_settings),
     memory_service: MemoryService | None = Depends(get_memory_service),
+    evaluation_engine: EvaluationEngine | None = Depends(get_evaluation_engine),
 ) -> VoicePipelineService:
     return VoicePipelineService(
-        session_manager, stt, response_generator, tts, settings, memory_service
+        session_manager,
+        stt,
+        response_generator,
+        tts,
+        settings,
+        memory_service,
+        evaluation_engine,
     )

@@ -11,6 +11,7 @@ from voxforge.core.domain.entities import TransportType
 from voxforge.core.domain.events import AudioChunk, TranscriptEvent
 from voxforge.core.events.bus import get_event_bus
 from voxforge.core.exceptions import ForbiddenError, SessionNotFoundError, UnauthorizedError
+from voxforge.infrastructure.db.evaluation_repository import EvaluationRepository
 from voxforge.infrastructure.db.memory_repository import MemoryRepository
 from voxforge.infrastructure.db.session import get_engine
 from voxforge.infrastructure.db.tool_repository import ToolCallRepository
@@ -25,6 +26,7 @@ from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
 from voxforge.infrastructure.tools.mcp_adapter import MCPToolAdapter
 from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
 from voxforge.modules.auth.application.service import AuthService
+from voxforge.modules.evaluation.application.service import EvaluationEngine
 from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
 from voxforge.modules.mcp_tool_router.application.router import ToolRouter
 from voxforge.modules.memory.application.service import MemoryService
@@ -88,9 +90,20 @@ async def voice_websocket(websocket: WebSocket) -> None:
             response_generator = create_response_generator(
                 settings, llm, memory_service, tool_router
             )
+            evaluation_engine: EvaluationEngine | None = None
+            if settings.evaluation_enabled:
+                evaluation_engine = EvaluationEngine(
+                    EvaluationRepository(db_session), settings
+                )
             tts = CartesiaTTSProvider(settings.cartesia_api_key)
             pipeline = VoicePipelineService(
-                session_manager, stt, response_generator, tts, settings, memory_service
+                session_manager,
+                stt,
+                response_generator,
+                tts,
+                settings,
+                memory_service,
+                evaluation_engine,
             )
 
             while True:

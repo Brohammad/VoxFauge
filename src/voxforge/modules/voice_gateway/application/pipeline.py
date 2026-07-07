@@ -23,6 +23,7 @@ from voxforge.infrastructure.providers.tts.cartesia import token_stream_to_sente
 from voxforge.modules.session_manager.application.service import SessionManager
 
 if TYPE_CHECKING:
+    from voxforge.modules.evaluation.application.service import EvaluationEngine
     from voxforge.modules.memory.application.service import MemoryService
 
 logger = get_logger(__name__)
@@ -47,6 +48,7 @@ class VoicePipelineService:
         tts_provider: TTSProvider,
         settings: Settings,
         memory_service: "MemoryService | None" = None,
+        evaluation_engine: "EvaluationEngine | None" = None,
     ) -> None:
         self._sessions = session_manager
         self._stt = stt_provider
@@ -54,6 +56,7 @@ class VoicePipelineService:
         self._tts = tts_provider
         self._settings = settings
         self._memory = memory_service
+        self._evaluation = evaluation_engine
         self._session_orgs: dict[UUID, UUID] = {}
         self._interrupt_event: asyncio.Event | None = None
         self._pipeline_task: asyncio.Task | None = None
@@ -150,6 +153,7 @@ class VoicePipelineService:
         llm_start = time.monotonic()
         first_token_time: float | None = None
         first_audio_time: float | None = None
+        was_interrupted = False
 
         async def on_agent_step(agent: str, status: str, payload: dict) -> None:
             await self._maybe_await(callbacks.on_agent_step(agent, status, payload))
@@ -161,6 +165,7 @@ class VoicePipelineService:
                 on_agent_step=on_agent_step,
             ):
                 if self._interrupt_event and self._interrupt_event.is_set():
+                    was_interrupted = True
                     break
                 if event.text:
                     if first_token_time is None:
@@ -179,6 +184,7 @@ class VoicePipelineService:
         try:
             async for sentence in token_stream_to_sentences(token_iter()):
                 if self._interrupt_event and self._interrupt_event.is_set():
+                    was_interrupted = True
                     turns_interrupted.inc()
                     break
 
@@ -189,6 +195,7 @@ class VoicePipelineService:
 
                 async for chunk in self._tts.synthesize_stream(single_text(), voice_id=voice_id):
                     if self._interrupt_event and self._interrupt_event.is_set():
+                        was_interrupted = True
                         turns_interrupted.inc()
                         break
                     if first_audio_time is None:
@@ -220,6 +227,29 @@ class VoicePipelineService:
                 )
 
         await self._sessions.save_turn_metrics(session_id, metrics)
+        if self._evaluation:
+            from voxforge.core.domain.evaluation import TurnEvaluationInput
+
+            trace = self._response_generator.get_last_agent_trace(session_id)
+            tool_calls = [
+                {"status": step.get("status", ""), "tool": step.get("agent")}
+                for step in trace
+                if step.get("agent") == "tool"
+            ]
+            await self._evaluation.evaluate_turn(
+                TurnEvaluationInput(
+                    session_id=session_id,
+                    org_id=org_id,
+                    user_transcript=transcript,
+                    assistant_response=assistant_text,
+                    stt_ms=metrics.stt_ms,
+                    llm_first_token_ms=metrics.llm_first_token_ms,
+                    tts_first_byte_ms=metrics.tts_first_byte_ms,
+                    e2e_ms=metrics.e2e_ms,
+                    tool_calls=tool_calls,
+                    interrupted=was_interrupted,
+                )
+            )
         await self._sessions.commit()
         await self._maybe_await(callbacks.on_metrics(metrics))
         turns_completed.inc()

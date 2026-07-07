@@ -31,6 +31,7 @@ VoxForge is a modular monolith built with Clean Architecture principles:
 - **Agent Orchestrator** — LangGraph multi-agent pipeline (planner, safety, executor, critic, coordinator)
 - **Memory** — Semantic retrieval, summarization, and context compression (pgvector)
 - **MCP Tool Router** — Builtin tools + MCP server integration for agent executor
+- **Evaluation Engine** — Per-turn latency, quality, tool, and cost scoring
 - **Voice Gateway** — WebSocket transport for real-time audio streaming
 - **Session Manager** — Voice session lifecycle and reconnect support
 - **STT Module** — Streaming speech recognition (Deepgram)

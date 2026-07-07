@@ -62,6 +62,12 @@ class Settings(BaseSettings):
     max_tool_iterations: int = 5
     mcp_servers_config: str = ""  # JSON array of MCP server configs
 
+    evaluation_enabled: bool = True
+    evaluation_e2e_target_ms: float = 2000.0
+    evaluation_llm_input_cost_per_1k: float = 0.00015
+    evaluation_llm_output_cost_per_1k: float = 0.0006
+    evaluation_turn_cost_budget_usd: float = 0.01
+
 
 @lru_cache
 def get_settings() -> Settings:

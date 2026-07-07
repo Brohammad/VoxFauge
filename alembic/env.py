@@ -11,6 +11,8 @@ from voxforge.infrastructure.db.base import Base
 from voxforge.infrastructure.db.models import (  # noqa: F401
     ApiKeyModel,
     AuditLogModel,
+    EvaluationMetricModel,
+    EvaluationRunModel,
     MemoryEntryModel,
     MessageModel,
     OrganizationMemberModel,
