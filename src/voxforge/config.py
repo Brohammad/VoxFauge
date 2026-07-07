@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     cartesia_api_key: str = ""
 
-    default_llm_model: str = "gpt-4o-mini"
+    default_llm_model: str = "gpt-4.1-mini"
     default_tts_voice_id: str = "79a125e8-cd45-4c13-8a67-188112f4dd22"
 
     otel_exporter_otlp_endpoint: str = ""
@@ -42,11 +42,11 @@ class Settings(BaseSettings):
 
     orchestrator_mode: str = "single"  # single | multi_agent
     max_agent_iterations: int = 2
-    planner_model: str = "gpt-4o-mini"
-    executor_model: str = "gpt-4o-mini"
-    critic_model: str = "gpt-4o-mini"
-    safety_model: str = "gpt-4o-mini"
-    coordinator_model: str = "gpt-4o-mini"
+    planner_model: str = "gpt-4.1-mini"
+    executor_model: str = "gpt-4.1-mini"
+    critic_model: str = "gpt-4.1-mini"
+    safety_model: str = "gpt-4.1-mini"
+    coordinator_model: str = "gpt-4.1-mini"
 
 
 @lru_cache

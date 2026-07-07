@@ -28,24 +28,28 @@ class DeepgramSTTProvider:
             raise ProviderError("deepgram", "API key not configured")
 
         params = {
+            "model": "nova-2",
             "encoding": "linear16",
             "sample_rate": "16000",
             "channels": "1",
             "interim_results": "true",
             "punctuate": "true",
             "smart_format": "true",
+            "language": language or "en",
         }
-        if language:
-            params["language"] = language
-        else:
-            params["detect_language"] = "true"
 
         url = f"{DEEPGRAM_WS_URL}?{urlencode(params)}"
         headers = {"Authorization": f"Token {self._api_key}"}
 
         try:
             async with websockets.connect(url, additional_headers=headers) as ws:
-                send_task = asyncio.create_task(self._send_audio(ws, audio_stream))
+
+                async def send_audio() -> None:
+                    async for chunk in audio_stream:
+                        await ws.send(chunk)
+                    await ws.send(json.dumps({"type": "CloseStream"}))
+
+                send_task = asyncio.create_task(send_audio())
                 try:
                     async for message in ws:
                         if isinstance(message, bytes):
@@ -54,22 +58,17 @@ class DeepgramSTTProvider:
                         if event is not None:
                             yield event
                 finally:
-                    send_task.cancel()
+                    if not send_task.done():
+                        send_task.cancel()
                     try:
                         await send_task
                     except asyncio.CancelledError:
                         pass
-                    await ws.send(json.dumps({"type": "CloseStream"}))
+        except websockets.exceptions.ConnectionClosed:
+            pass
         except websockets.exceptions.WebSocketException as exc:
             logger.error("deepgram_ws_error", error=str(exc))
             raise ProviderError("deepgram", str(exc)) from exc
-
-    async def _send_audio(self, ws, audio_stream: AsyncIterator[bytes]) -> None:
-        try:
-            async for chunk in audio_stream:
-                await ws.send(chunk)
-        except asyncio.CancelledError:
-            pass
 
     def _parse_message(self, raw: str) -> TranscriptEvent | None:
         try:
