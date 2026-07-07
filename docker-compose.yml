@@ -37,12 +37,38 @@ services:
     volumes:
       - ./src:/app/src
       - ./alembic:/app/alembic
+      - ./dashboard:/app/dashboard
+      - ./examples:/app/examples
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    entrypoint: ["/app/scripts/docker-entrypoint.sh"]
     command: uvicorn voxforge.main:app --host 0.0.0.0 --port 8000 --reload --app-dir /app/src
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - app
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: voxforge
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/etc/grafana/dashboards:ro
+    depends_on:
+      - prometheus
 
 volumes:
   postgres_data:

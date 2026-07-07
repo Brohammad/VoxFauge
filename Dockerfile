@@ -11,8 +11,12 @@ COPY pyproject.toml README.md ./
 COPY src ./src
 COPY alembic ./alembic
 COPY alembic.ini ./
+COPY dashboard ./dashboard
+COPY examples ./examples
+COPY scripts ./scripts
 
-RUN pip install --no-cache-dir -e ".[dev]"
+RUN chmod +x /app/scripts/docker-entrypoint.sh
+RUN pip install --no-cache-dir -e ".[dev,livekit]"
 
 EXPOSE 8000
 

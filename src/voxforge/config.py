@@ -16,6 +16,14 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     cartesia_api_key: str = ""
 
+    stt_provider: str = "deepgram"  # deepgram | mock
+    llm_provider: str = "openai"  # openai | mock
+    tts_provider: str = "cartesia"  # cartesia | mock
+
+    livekit_url: str = ""
+    livekit_api_key: str = ""
+    livekit_api_secret: str = ""
+
     default_llm_model: str = "gpt-4.1-mini"
     default_tts_voice_id: str = "79a125e8-cd45-4c13-8a67-188112f4dd22"
 
@@ -67,6 +75,9 @@ class Settings(BaseSettings):
     evaluation_llm_input_cost_per_1k: float = 0.00015
     evaluation_llm_output_cost_per_1k: float = 0.0006
     evaluation_turn_cost_budget_usd: float = 0.01
+    evaluation_hallucination_enabled: bool = True
+    evaluation_judge_model: str = "gpt-4.1-mini"
+    evaluation_min_hallucination_score: float = 0.7
 
 
 @lru_cache

@@ -39,6 +39,9 @@ dependencies = [
 mcp = [
     "mcp>=1.2.0",
 ]
+livekit = [
+    "livekit-api>=0.8.0",
+]
 dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",

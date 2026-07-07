@@ -13,10 +13,14 @@ from voxforge.infrastructure.db.evaluation_repository import EvaluationRepositor
 from voxforge.infrastructure.db.memory_repository import MemoryRepository
 from voxforge.infrastructure.db.session import get_db_session
 from voxforge.infrastructure.db.tool_repository import ToolCallRepository
+from voxforge.infrastructure.livekit.token_service import LiveKitTokenService
 from voxforge.infrastructure.providers.embeddings.openai import OpenAIEmbeddingProvider
+from voxforge.infrastructure.providers.factory import (
+    create_llm_provider,
+    create_stt_provider,
+    create_tts_provider,
+)
 from voxforge.infrastructure.providers.llm.openai import OpenAILLMProvider
-from voxforge.infrastructure.providers.stt.deepgram import DeepgramSTTProvider
-from voxforge.infrastructure.providers.tts.cartesia import CartesiaTTSProvider
 from voxforge.infrastructure.redis.client import get_redis
 from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
 from voxforge.infrastructure.tools.mcp_adapter import MCPToolAdapter
@@ -98,16 +102,20 @@ def get_session_manager(
     return SessionManager(db, state_store, event_bus, settings)
 
 
-def get_stt_provider(settings: Settings = Depends(get_settings)) -> DeepgramSTTProvider:
-    return DeepgramSTTProvider(settings.deepgram_api_key)
+def get_stt_provider(settings: Settings = Depends(get_settings)):
+    return create_stt_provider(settings)
 
 
-def get_llm_provider(settings: Settings = Depends(get_settings)) -> OpenAILLMProvider:
-    return OpenAILLMProvider(settings.openai_api_key)
+def get_llm_provider(settings: Settings = Depends(get_settings)):
+    return create_llm_provider(settings)
 
 
-def get_tts_provider(settings: Settings = Depends(get_settings)) -> CartesiaTTSProvider:
-    return CartesiaTTSProvider(settings.cartesia_api_key)
+def get_tts_provider(settings: Settings = Depends(get_settings)):
+    return create_tts_provider(settings)
+
+
+def get_livekit_service(settings: Settings = Depends(get_settings)) -> LiveKitTokenService:
+    return LiveKitTokenService(settings)
 
 
 def get_memory_service(
@@ -140,10 +148,11 @@ def get_tool_router(
 def get_evaluation_engine(
     db: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
+    llm=Depends(get_llm_provider),
 ) -> EvaluationEngine | None:
     if not settings.evaluation_enabled:
         return None
-    return EvaluationEngine(EvaluationRepository(db), settings)
+    return EvaluationEngine(EvaluationRepository(db), settings, llm)
 
 
 def get_dashboard_service(
@@ -163,9 +172,9 @@ def get_response_generator(
 
 def get_pipeline(
     session_manager: SessionManager = Depends(get_session_manager),
-    stt: DeepgramSTTProvider = Depends(get_stt_provider),
+    stt=Depends(get_stt_provider),
     response_generator=Depends(get_response_generator),
-    tts: CartesiaTTSProvider = Depends(get_tts_provider),
+    tts=Depends(get_tts_provider),
     settings: Settings = Depends(get_settings),
     memory_service: MemoryService | None = Depends(get_memory_service),
     evaluation_engine: EvaluationEngine | None = Depends(get_evaluation_engine),

@@ -1,0 +1,58 @@
+{
+  "title": "VoxForge Voice Pipeline",
+  "uid": "voxforge-main",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "E2E Turn Latency (p50)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, rate(voxforge_e2e_turn_latency_seconds_bucket[5m]))",
+          "legendFormat": "p50 e2e"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Active Sessions",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "targets": [{"expr": "voxforge_active_sessions"}]
+    },
+    {
+      "type": "stat",
+      "title": "WS Connections",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "targets": [{"expr": "voxforge_ws_connections"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Turns Completed / Interrupted",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "targets": [
+        {"expr": "rate(voxforge_turns_completed_total[5m])", "legendFormat": "completed"},
+        {"expr": "rate(voxforge_turns_interrupted_total[5m])", "legendFormat": "interrupted"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Evaluation Score",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [
+        {"expr": "histogram_quantile(0.5, rate(voxforge_evaluation_score_bucket[5m]))", "legendFormat": "p50 score"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Tool Call Rate",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "targets": [
+        {"expr": "sum(rate(voxforge_tool_calls_total[5m])) by (tool_name)", "legendFormat": "{{tool_name}}"}
+      ]
+    }
+  ]
+}

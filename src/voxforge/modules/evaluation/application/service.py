@@ -7,6 +7,7 @@ from voxforge.core.domain.evaluation import (
     EvaluationStatus,
     TurnEvaluationInput,
 )
+from voxforge.core.interfaces.providers import LLMProvider
 from voxforge.infrastructure.db.evaluation_repository import EvaluationRepository
 from voxforge.infrastructure.observability.logging import get_logger
 from voxforge.infrastructure.observability.metrics import (
@@ -20,6 +21,7 @@ from voxforge.modules.evaluation.application.evaluators import (
     TaskCompletionEvaluator,
     ToolAccuracyEvaluator,
 )
+from voxforge.modules.evaluation.application.hallucination import HallucinationEvaluator
 
 logger = get_logger(__name__)
 
@@ -27,7 +29,12 @@ logger = get_logger(__name__)
 class EvaluationEngine:
     """Scores each conversation turn across latency, quality, tools, and cost."""
 
-    def __init__(self, repository: EvaluationRepository, settings: Settings) -> None:
+    def __init__(
+        self,
+        repository: EvaluationRepository,
+        settings: Settings,
+        llm: LLMProvider | None = None,
+    ) -> None:
         self._repo = repository
         self._settings = settings
         self._evaluators = [
@@ -37,12 +44,17 @@ class EvaluationEngine:
             ConversationQualityEvaluator(),
             CostEvaluator(settings),
         ]
+        self._hallucination: HallucinationEvaluator | None = None
+        if settings.evaluation_hallucination_enabled and llm is not None:
+            self._hallucination = HallucinationEvaluator(settings, llm)
 
     async def evaluate_turn(self, turn: TurnEvaluationInput) -> EvaluationRun | None:
         if not self._settings.evaluation_enabled:
             return None
 
         metrics: list[EvaluationMetric] = [e.evaluate(turn) for e in self._evaluators]
+        if self._hallucination is not None:
+            metrics.append(await self._hallucination.evaluate(turn))
         overall_score = round(sum(m.score for m in metrics) / len(metrics), 3)
         overall_status = _overall_status(metrics)
 

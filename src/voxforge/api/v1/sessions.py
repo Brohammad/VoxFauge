@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voxforge.api.dependencies import get_session_manager, require_scope
+from voxforge.config import get_settings
 from voxforge.core.domain.auth import Principal
 from voxforge.core.domain.entities import SessionStatus, TransportType, VoiceSession
 from voxforge.core.exceptions import SessionNotFoundError
@@ -21,7 +22,9 @@ class CreateSessionRequest(BaseModel):
 
 class CreateSessionResponse(BaseModel):
     session_id: UUID
-    ws_url: str
+    transport_type: TransportType
+    ws_url: str | None = None
+    livekit_url: str | None = None
     status: SessionStatus
 
 
@@ -78,9 +81,18 @@ async def create_session(
         created_by_user_id=principal.user_id,
     )
     await session_manager.commit()
+    settings = get_settings()
+    ws_url = "/api/v1/ws/voice" if body.transport_type == TransportType.WEBSOCKET else None
+    livekit_url = (
+        settings.livekit_url
+        if body.transport_type == TransportType.WEBRTC and settings.livekit_url
+        else None
+    )
     return CreateSessionResponse(
         session_id=session.id,
-        ws_url="/api/v1/ws/voice",
+        transport_type=body.transport_type,
+        ws_url=ws_url,
+        livekit_url=livekit_url,
         status=session.status,
     )
 

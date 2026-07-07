@@ -236,6 +236,16 @@ class VoicePipelineService:
                 for step in trace
                 if step.get("agent") == "tool"
             ]
+            context_snippets: list[str] = []
+            if self._memory and org_id is not None:
+                memory_ctx = await self._memory.retrieve_context(
+                    org_id=org_id,
+                    session_id=session_id,
+                    query=transcript,
+                )
+                if memory_ctx.summary:
+                    context_snippets.append(memory_ctx.summary)
+                context_snippets.extend(e.content for e in memory_ctx.relevant_entries)
             await self._evaluation.evaluate_turn(
                 TurnEvaluationInput(
                     session_id=session_id,
@@ -248,6 +258,7 @@ class VoicePipelineService:
                     e2e_ms=metrics.e2e_ms,
                     tool_calls=tool_calls,
                     interrupted=was_interrupted,
+                    context_snippets=context_snippets,
                 )
             )
         await self._sessions.commit()

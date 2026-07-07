@@ -15,6 +15,7 @@ from voxforge.infrastructure.observability.telemetry import setup_telemetry
 from voxforge.infrastructure.redis.client import close_redis, init_redis
 
 DASHBOARD_DIR = Path(__file__).resolve().parents[2] / "dashboard"
+LIVEKIT_EXAMPLE_DIR = Path(__file__).resolve().parents[2] / "examples" / "livekit-client"
 
 
 @asynccontextmanager
@@ -53,6 +54,17 @@ def create_app() -> FastAPI:
         @app.get("/dashboard")
         async def dashboard_ui() -> FileResponse:
             return FileResponse(DASHBOARD_DIR / "index.html")
+
+    if LIVEKIT_EXAMPLE_DIR.is_dir():
+        app.mount(
+            "/examples/livekit/static",
+            StaticFiles(directory=LIVEKIT_EXAMPLE_DIR / "static"),
+            name="livekit-example-static",
+        )
+
+        @app.get("/examples/livekit")
+        async def livekit_example_ui() -> FileResponse:
+            return FileResponse(LIVEKIT_EXAMPLE_DIR / "index.html")
 
     app.state.settings = settings
     return app

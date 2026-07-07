@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: VoxForge
+    orgId: 1
+    folder: VoxForge
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/dashboards

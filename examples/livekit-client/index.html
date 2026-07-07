@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoxForge — LiveKit WebRTC Client</title>
+  <link rel="stylesheet" href="/examples/livekit/static/styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <div class="brand">
+        <span class="brand-icon">◉</span>
+        <div>
+          <h1>LiveKit WebRTC Client</h1>
+          <p class="subtitle">Connect to a VoxForge voice session over WebRTC</p>
+        </div>
+      </div>
+      <nav class="links">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/api/v1/docs" target="_blank">API Docs</a>
+      </nav>
+    </header>
+
+    <div id="error-banner" class="error-banner hidden"></div>
+
+    <section class="panel">
+      <h2>Authentication</h2>
+      <div class="field-row">
+        <label for="token-input">JWT access token</label>
+        <input id="token-input" type="password" placeholder="Bearer token from /api/v1/auth/login" />
+      </div>
+      <div class="field-row">
+        <label for="identity-input">Participant identity</label>
+        <input id="identity-input" type="text" placeholder="user-123" />
+      </div>
+      <div class="field-row">
+        <label for="name-input">Display name (optional)</label>
+        <input id="name-input" type="text" placeholder="Alice" />
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Session</h2>
+      <div class="actions">
+        <button id="connect-btn" type="button" class="btn primary">Start WebRTC Session</button>
+        <button id="disconnect-btn" type="button" class="btn danger" disabled>Disconnect</button>
+      </div>
+      <dl class="status-grid" id="status-grid">
+        <div><dt>Connection</dt><dd id="status-connection">idle</dd></div>
+        <div><dt>Session ID</dt><dd id="status-session">—</dd></div>
+        <div><dt>Room</dt><dd id="status-room">—</dd></div>
+        <div><dt>LiveKit URL</dt><dd id="status-url">—</dd></div>
+        <div><dt>Participants</dt><dd id="status-participants">0</dd></div>
+        <div><dt>Microphone</dt><dd id="status-mic">off</dd></div>
+      </dl>
+    </section>
+
+    <section class="panel">
+      <h2>Remote audio</h2>
+      <p class="hint">Agent or other participants appear here when they publish audio tracks.</p>
+      <div id="audio-container" class="audio-container"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Event log</h2>
+      <pre id="event-log" class="event-log"></pre>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.9.3/dist/livekit-client.umd.min.js"></script>
+  <script src="/examples/livekit/static/app.js"></script>
+</body>
+</html>

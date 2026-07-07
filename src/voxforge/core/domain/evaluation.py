@@ -17,6 +17,7 @@ class MetricName(StrEnum):
     TOOL_ACCURACY = "tool_accuracy"
     CONVERSATION_QUALITY = "conversation_quality"
     COST = "cost"
+    HALLUCINATION = "hallucination"
 
 
 class EvaluationMetric(BaseModel):
@@ -41,6 +42,7 @@ class TurnEvaluationInput(BaseModel):
     interrupted: bool = False
     estimated_input_tokens: int = 0
     estimated_output_tokens: int = 0
+    context_snippets: list[str] = Field(default_factory=list)
 
 
 class EvaluationRun(BaseModel):
