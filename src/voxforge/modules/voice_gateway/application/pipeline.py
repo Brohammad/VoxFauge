@@ -159,7 +159,7 @@ class VoicePipelineService:
             await self._maybe_await(callbacks.on_agent_step(agent, status, payload))
 
         async def token_iter() -> AsyncIterator[str]:
-            nonlocal assistant_text, first_token_time
+            nonlocal assistant_text, first_token_time, was_interrupted
             async for event in self._response_generator.generate_response(
                 session_id,
                 on_agent_step=on_agent_step,

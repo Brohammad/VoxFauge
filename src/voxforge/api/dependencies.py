@@ -8,6 +8,7 @@ from voxforge.config import Settings, get_settings
 from voxforge.core.domain.auth import Principal
 from voxforge.core.events.bus import EventBus, get_event_bus
 from voxforge.core.exceptions import ForbiddenError, UnauthorizedError
+from voxforge.infrastructure.db.dashboard_repository import DashboardRepository
 from voxforge.infrastructure.db.evaluation_repository import EvaluationRepository
 from voxforge.infrastructure.db.memory_repository import MemoryRepository
 from voxforge.infrastructure.db.session import get_db_session
@@ -21,6 +22,7 @@ from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
 from voxforge.infrastructure.tools.mcp_adapter import MCPToolAdapter
 from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
 from voxforge.modules.auth.application.service import AuthService
+from voxforge.modules.dashboard.application.service import DashboardService
 from voxforge.modules.evaluation.application.service import EvaluationEngine
 from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
 from voxforge.modules.mcp_tool_router.application.router import ToolRouter
@@ -142,6 +144,12 @@ def get_evaluation_engine(
     if not settings.evaluation_enabled:
         return None
     return EvaluationEngine(EvaluationRepository(db), settings)
+
+
+def get_dashboard_service(
+    db: AsyncSession = Depends(get_db_session),
+) -> DashboardService:
+    return DashboardService(DashboardRepository(db))
 
 
 def get_response_generator(

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoxForge Dashboard</title>
+  <link rel="stylesheet" href="/dashboard/static/styles.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-icon">◉</span>
+        <span class="brand-name">VoxForge</span>
+      </div>
+      <nav>
+        <a href="#overview" class="nav-link active" data-section="overview">Overview</a>
+        <a href="#sessions" class="nav-link" data-section="sessions">Sessions</a>
+        <a href="#latency" class="nav-link" data-section="latency">Latency</a>
+        <a href="#evaluations" class="nav-link" data-section="evaluations">Evaluations</a>
+        <a href="#activity" class="nav-link" data-section="activity">Activity</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/api/v1/docs" target="_blank">API Docs</a>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <h1 id="page-title">Overview</h1>
+        <div class="auth-bar">
+          <input id="token-input" type="password" placeholder="JWT access token" />
+          <button id="connect-btn" type="button">Connect</button>
+          <span id="auth-status" class="status-badge">Not connected</span>
+        </div>
+      </header>
+
+      <div id="error-banner" class="error-banner hidden"></div>
+
+      <section id="overview" class="section">
+        <div class="cards" id="overview-cards"></div>
+      </section>
+
+      <section id="sessions" class="section hidden">
+        <div class="panel">
+          <h2>Recent Sessions</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Session</th>
+                  <th>Status</th>
+                  <th>Messages</th>
+                  <th>Avg E2E</th>
+                  <th>Eval Score</th>
+                  <th>Started</th>
+                </tr>
+              </thead>
+              <tbody id="sessions-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="latency" class="section hidden">
+        <div class="panel">
+          <h2>Latency Breakdown</h2>
+          <div id="latency-chart" class="chart"></div>
+        </div>
+      </section>
+
+      <section id="evaluations" class="section hidden">
+        <div class="panel">
+          <h2>Evaluation Summary</h2>
+          <div id="eval-summary" class="eval-grid"></div>
+          <div id="eval-metrics" class="metric-bars"></div>
+        </div>
+      </section>
+
+      <section id="activity" class="section hidden">
+        <div class="panel">
+          <h2>Recent Activity</h2>
+          <ul id="activity-list" class="activity-list"></ul>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/dashboard/static/app.js"></script>
+</body>
+</html>

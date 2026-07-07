@@ -23,6 +23,8 @@ uvicorn voxforge.main:app --reload --app-dir src
 
 API docs: http://localhost:8000/api/v1/docs
 
+Dashboard: http://localhost:8000/dashboard
+
 ## Architecture
 
 VoxForge is a modular monolith built with Clean Architecture principles:
@@ -32,6 +34,7 @@ VoxForge is a modular monolith built with Clean Architecture principles:
 - **Memory** — Semantic retrieval, summarization, and context compression (pgvector)
 - **MCP Tool Router** — Builtin tools + MCP server integration for agent executor
 - **Evaluation Engine** — Per-turn latency, quality, tool, and cost scoring
+- **Dashboard** — Web UI + analytics API for sessions, latency, evaluations, activity
 - **Voice Gateway** — WebSocket transport for real-time audio streaming
 - **Session Manager** — Voice session lifecycle and reconnect support
 - **STT Module** — Streaming speech recognition (Deepgram)

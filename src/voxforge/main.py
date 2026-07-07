@@ -1,7 +1,10 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from voxforge.api.v1.router import api_v1_router
 from voxforge.api.ws.voice import router as ws_router
@@ -10,6 +13,8 @@ from voxforge.infrastructure.db.session import close_db, init_db
 from voxforge.infrastructure.observability.logging import setup_logging
 from voxforge.infrastructure.observability.telemetry import setup_telemetry
 from voxforge.infrastructure.redis.client import close_redis, init_redis
+
+DASHBOARD_DIR = Path(__file__).resolve().parents[2] / "dashboard"
 
 
 @asynccontextmanager
@@ -37,6 +42,18 @@ def create_app() -> FastAPI:
     )
     app.include_router(api_v1_router, prefix="/api/v1")
     app.include_router(ws_router)
+
+    if DASHBOARD_DIR.is_dir():
+        app.mount(
+            "/dashboard/static",
+            StaticFiles(directory=DASHBOARD_DIR / "static"),
+            name="dashboard-static",
+        )
+
+        @app.get("/dashboard")
+        async def dashboard_ui() -> FileResponse:
+            return FileResponse(DASHBOARD_DIR / "index.html")
+
     app.state.settings = settings
     return app
 
