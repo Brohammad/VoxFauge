@@ -40,3 +40,23 @@ provider_errors = Counter(
     "Total provider errors",
     ["provider", "operation"],
 )
+tool_calls_total = Counter(
+    "voxforge_tool_calls_total",
+    "Total tool invocations",
+    ["tool_name", "status"],
+)
+tool_latency_seconds = Histogram(
+    "voxforge_tool_latency_seconds",
+    "Tool execution latency",
+    ["tool_name"],
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 30.0),
+)
+memory_stores_total = Counter(
+    "voxforge_memory_stores_total",
+    "Total memory entries stored",
+)
+memory_retrieval_latency_seconds = Histogram(
+    "voxforge_memory_retrieval_latency_seconds",
+    "Memory retrieval latency",
+    buckets=(0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0),
+)

@@ -2,11 +2,11 @@ import asyncio
 import time
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from voxforge.config import Settings
-from voxforge.core.domain.entities import SessionPhase, TurnMetrics
+from voxforge.core.domain.entities import MessageRole, SessionPhase, TurnMetrics
 from voxforge.core.domain.events import AudioChunk, TranscriptEvent
 from voxforge.core.interfaces.providers import SpeechProvider, TTSProvider
 from voxforge.core.interfaces.response_generator import ResponseGenerator
@@ -21,6 +21,9 @@ from voxforge.infrastructure.observability.metrics import (
 )
 from voxforge.infrastructure.providers.tts.cartesia import token_stream_to_sentences
 from voxforge.modules.session_manager.application.service import SessionManager
+
+if TYPE_CHECKING:
+    from voxforge.modules.memory.application.service import MemoryService
 
 logger = get_logger(__name__)
 
@@ -43,14 +46,22 @@ class VoicePipelineService:
         response_generator: ResponseGenerator,
         tts_provider: TTSProvider,
         settings: Settings,
+        memory_service: "MemoryService | None" = None,
     ) -> None:
         self._sessions = session_manager
         self._stt = stt_provider
         self._response_generator = response_generator
         self._tts = tts_provider
         self._settings = settings
+        self._memory = memory_service
+        self._session_orgs: dict[UUID, UUID] = {}
         self._interrupt_event: asyncio.Event | None = None
         self._pipeline_task: asyncio.Task | None = None
+
+    def set_session_org(self, session_id: UUID, org_id: UUID | None) -> None:
+        if org_id is not None:
+            self._session_orgs[session_id] = org_id
+        self._response_generator.set_session_org(session_id, org_id)
 
     async def run_listening(
         self,
@@ -120,9 +131,19 @@ class VoicePipelineService:
         self._interrupt_event = asyncio.Event()
 
         await self._sessions.update_phase(session_id, SessionPhase.PROCESSING)
-        await self._sessions.save_user_message(
+        user_message = await self._sessions.save_user_message(
             session_id, transcript, metadata={"confidence": confidence}
         )
+        org_id = self._session_orgs.get(session_id)
+        if self._memory and org_id is not None:
+            await self._memory.store_turn(
+                org_id=org_id,
+                session_id=session_id,
+                role=MessageRole.USER.value,
+                content=transcript,
+                message_id=user_message.id,
+                metadata={"confidence": confidence},
+            )
         self._response_generator.add_user_message(session_id, transcript)
 
         assistant_text = ""
@@ -185,9 +206,18 @@ class VoicePipelineService:
             trace = self._response_generator.get_last_agent_trace(session_id)
             metadata = {"agent_trace": trace} if trace else {}
             self._response_generator.add_assistant_message(session_id, assistant_text)
-            await self._sessions.save_assistant_message(
+            assistant_message = await self._sessions.save_assistant_message(
                 session_id, assistant_text, metadata=metadata
             )
+            if self._memory and org_id is not None:
+                await self._memory.store_turn(
+                    org_id=org_id,
+                    session_id=session_id,
+                    role=MessageRole.ASSISTANT.value,
+                    content=assistant_text,
+                    message_id=assistant_message.id,
+                    metadata=metadata,
+                )
 
         await self._sessions.save_turn_metrics(session_id, metrics)
         await self._sessions.commit()

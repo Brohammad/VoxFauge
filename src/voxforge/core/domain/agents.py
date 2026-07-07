@@ -30,7 +30,8 @@ PLANNER_PROMPT = (
 
 EXECUTOR_PROMPT = (
     "You are an executor agent. Follow the plan and conversation history to draft "
-    "a helpful response. Keep it concise and conversational for voice output."
+    "a helpful response. Use available tools when they help answer the user. "
+    "Keep it concise and conversational for voice output."
 )
 
 CRITIC_PROMPT = (

@@ -48,6 +48,20 @@ class Settings(BaseSettings):
     safety_model: str = "gpt-4.1-mini"
     coordinator_model: str = "gpt-4.1-mini"
 
+    memory_enabled: bool = True
+    memory_embedding_model: str = "text-embedding-3-small"
+    memory_embedding_dimensions: int = 1536
+    memory_max_recent_messages: int = 10
+    memory_summarize_after_messages: int = 20
+    memory_retrieval_top_k: int = 5
+    memory_similarity_threshold: float = 0.65
+    memory_summary_model: str = "gpt-4.1-mini"
+
+    tools_enabled: bool = True
+    tool_timeout_seconds: int = 30
+    max_tool_iterations: int = 5
+    mcp_servers_config: str = ""  # JSON array of MCP server configs
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -11,10 +11,13 @@ from voxforge.infrastructure.db.base import Base
 from voxforge.infrastructure.db.models import (  # noqa: F401
     ApiKeyModel,
     AuditLogModel,
+    MemoryEntryModel,
     MessageModel,
     OrganizationMemberModel,
     OrganizationModel,
     SessionMetricModel,
+    SessionSummaryModel,
+    ToolCallModel,
     UserModel,
     VoiceSessionModel,
 )

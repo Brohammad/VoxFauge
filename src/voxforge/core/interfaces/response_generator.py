@@ -15,6 +15,8 @@ class ResponseGenerator(Protocol):
 
     def load_history(self, session_id: UUID, messages: list[Message]) -> None: ...
 
+    def set_session_org(self, session_id: UUID, org_id: UUID | None) -> None: ...
+
     async def generate_response(
         self,
         session_id: UUID,

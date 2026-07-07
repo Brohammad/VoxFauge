@@ -21,11 +21,22 @@ class _ChatMessage:
 class AgentOrchestrator:
     """LangGraph multi-agent orchestrator (planner, safety, executor, critic, coordinator)."""
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        memory_service: Any | None = None,
+        tool_router: Any | None = None,
+    ) -> None:
         self._settings = settings
-        self._graph = build_agent_graph(settings)
+        self._tool_router = tool_router
+        self._graph = build_agent_graph(settings, tool_router)
         self._history: dict[UUID, list[_ChatMessage]] = {}
         self._traces: dict[UUID, list[dict]] = {}
+        self._memory = memory_service
+        self._org_ids: dict[UUID, UUID | None] = {}
+
+    def set_session_org(self, session_id: UUID, org_id: UUID | None) -> None:
+        self._org_ids[session_id] = org_id
 
     def init_session(self, session_id: UUID) -> None:
         self._history[session_id] = [
@@ -60,11 +71,21 @@ class AgentOrchestrator:
         on_agent_step: Callable[[str, str, dict], Any] | None = None,
     ) -> AsyncIterator[TokenEvent]:
         history = self._history.get(session_id, [])
-        user_input = ""
-        for msg in reversed(history):
-            if msg.role == MessageRole.USER:
-                user_input = msg.content
-                break
+        user_input = _last_user_message(history)
+
+        if self._memory:
+            from voxforge.modules.memory.application.context_builder import ChatMessageLike
+
+            built = await self._memory.build_messages_for_llm(
+                org_id=self._org_ids.get(session_id),
+                session_id=session_id,
+                system_prompt=self._settings.system_prompt,
+                recent_messages=[
+                    ChatMessageLike(role=m.role, content=m.content) for m in history
+                ],
+                query=user_input,
+            )
+            history = [_ChatMessage(role=m.role, content=m.content) for m in built]
 
         messages = [{"role": m.role.value, "content": m.content} for m in history]
 
@@ -80,7 +101,10 @@ class AgentOrchestrator:
             "critic_feedback": "",
             "final_response": "",
             "iteration": 0,
+            "session_id": str(session_id),
+            "org_id": str(self._org_ids[session_id]) if self._org_ids.get(session_id) else None,
             "agent_trace": [],
+            "tool_calls": [],
         })
 
         trace = result.get("agent_trace", [])
@@ -103,6 +127,7 @@ class AgentOrchestrator:
     def clear_session(self, session_id: UUID) -> None:
         self._history.pop(session_id, None)
         self._traces.pop(session_id, None)
+        self._org_ids.pop(session_id, None)
 
     def get_last_agent_trace(self, session_id: UUID) -> list[dict]:
         return self._traces.get(session_id, [])
@@ -113,3 +138,10 @@ async def _maybe_await(result: Any) -> None:
 
     if asyncio.iscoroutine(result):
         await result
+
+
+def _last_user_message(history: list[_ChatMessage]) -> str:
+    for msg in reversed(history):
+        if msg.role == MessageRole.USER:
+            return msg.content
+    return ""

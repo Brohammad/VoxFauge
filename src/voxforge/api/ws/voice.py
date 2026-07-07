@@ -11,16 +11,23 @@ from voxforge.core.domain.entities import TransportType
 from voxforge.core.domain.events import AudioChunk, TranscriptEvent
 from voxforge.core.events.bus import get_event_bus
 from voxforge.core.exceptions import ForbiddenError, SessionNotFoundError, UnauthorizedError
+from voxforge.infrastructure.db.memory_repository import MemoryRepository
 from voxforge.infrastructure.db.session import get_engine
+from voxforge.infrastructure.db.tool_repository import ToolCallRepository
 from voxforge.infrastructure.observability.logging import get_logger
 from voxforge.infrastructure.observability.metrics import active_sessions, ws_connections
+from voxforge.infrastructure.providers.embeddings.openai import OpenAIEmbeddingProvider
 from voxforge.infrastructure.providers.llm.openai import OpenAILLMProvider
 from voxforge.infrastructure.providers.stt.deepgram import DeepgramSTTProvider
 from voxforge.infrastructure.providers.tts.cartesia import CartesiaTTSProvider
 from voxforge.infrastructure.redis.client import get_redis
 from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
+from voxforge.infrastructure.tools.mcp_adapter import MCPToolAdapter
 from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
 from voxforge.modules.auth.application.service import AuthService
+from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
+from voxforge.modules.mcp_tool_router.application.router import ToolRouter
+from voxforge.modules.memory.application.service import MemoryService
 from voxforge.modules.session_manager.application.service import SessionManager
 from voxforge.modules.voice_gateway.application.pipeline import (
     PipelineCallbacks,
@@ -55,10 +62,35 @@ async def voice_websocket(websocket: WebSocket) -> None:
             session_manager = SessionManager(db_session, state_store, event_bus, settings)
             stt = DeepgramSTTProvider(settings.deepgram_api_key)
             llm = OpenAILLMProvider(settings.openai_api_key)
-            response_generator = create_response_generator(settings, llm)
+            memory_service: MemoryService | None = None
+            if settings.memory_enabled:
+                memory_service = MemoryService(
+                    MemoryRepository(db_session),
+                    OpenAIEmbeddingProvider(
+                        settings.openai_api_key,
+                        model=settings.memory_embedding_model,
+                    ),
+                    settings,
+                    llm,
+                )
+            tool_router: ToolRouter | None = None
+            if settings.tools_enabled:
+                mcp = (
+                    MCPToolAdapter(settings.mcp_servers_config)
+                    if settings.mcp_servers_config
+                    else None
+                )
+                tool_router = ToolRouter(
+                    ToolRegistry(mcp),
+                    settings,
+                    ToolCallRepository(db_session),
+                )
+            response_generator = create_response_generator(
+                settings, llm, memory_service, tool_router
+            )
             tts = CartesiaTTSProvider(settings.cartesia_api_key)
             pipeline = VoicePipelineService(
-                session_manager, stt, response_generator, tts, settings
+                session_manager, stt, response_generator, tts, settings, memory_service
             )
 
             while True:
@@ -184,6 +216,8 @@ async def _handle_control_message(
         await session_manager.commit()
 
         response_generator.init_session(session.id)
+        response_generator.set_session_org(session.id, principal.org_id)
+        pipeline.set_session_org(session.id, principal.org_id)
         messages = await session_manager.get_messages(session.id)
         if messages:
             response_generator.load_history(session.id, messages)

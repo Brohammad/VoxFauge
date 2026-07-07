@@ -19,10 +19,20 @@ class _ChatMessage:
 
 
 class ConversationEngine:
-    def __init__(self, llm_provider: LLMProvider, settings: Settings) -> None:
+    def __init__(
+        self,
+        llm_provider: LLMProvider,
+        settings: Settings,
+        memory_service: Any | None = None,
+    ) -> None:
         self._llm = llm_provider
         self._settings = settings
+        self._memory = memory_service
         self._history: dict[UUID, list[_ChatMessage]] = {}
+        self._org_ids: dict[UUID, UUID | None] = {}
+
+    def set_session_org(self, session_id: UUID, org_id: UUID | None) -> None:
+        self._org_ids[session_id] = org_id
 
     def init_session(self, session_id: UUID) -> None:
         self._history[session_id] = [
@@ -57,6 +67,21 @@ class ConversationEngine:
     ) -> AsyncIterator[TokenEvent]:
         history = self._history.get(session_id, [])
         model = model or self._settings.default_llm_model
+        query = _last_user_message(history)
+
+        if self._memory:
+            from voxforge.modules.memory.application.context_builder import ChatMessageLike
+
+            built = await self._memory.build_messages_for_llm(
+                org_id=self._org_ids.get(session_id),
+                session_id=session_id,
+                system_prompt=self._settings.system_prompt,
+                recent_messages=[
+                    ChatMessageLike(role=m.role, content=m.content) for m in history
+                ],
+                query=query,
+            )
+            history = [_ChatMessage(role=m.role, content=m.content) for m in built]
 
         logger.info("conversation_generate", session_id=str(session_id), model=model)
         async for event in self._llm.generate_stream(history, model=model):
@@ -64,6 +89,14 @@ class ConversationEngine:
 
     def clear_session(self, session_id: UUID) -> None:
         self._history.pop(session_id, None)
+        self._org_ids.pop(session_id, None)
 
     def get_last_agent_trace(self, session_id: UUID) -> list[dict]:
         return []
+
+
+def _last_user_message(history: list[_ChatMessage]) -> str:
+    for msg in reversed(history):
+        if msg.role == MessageRole.USER:
+            return msg.content
+    return ""

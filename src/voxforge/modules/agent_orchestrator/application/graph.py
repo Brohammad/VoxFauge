@@ -1,7 +1,8 @@
 import json
-from typing import Annotated, TypedDict
+from typing import Annotated, Any, TypedDict
+from uuid import UUID
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 
@@ -12,6 +13,9 @@ from voxforge.core.domain.agents import (
     PLANNER_PROMPT,
     SAFETY_PROMPT,
 )
+
+if False:  # TYPE_CHECKING
+    pass
 
 
 class OrchestratorState(TypedDict):
@@ -25,7 +29,10 @@ class OrchestratorState(TypedDict):
     critic_feedback: str
     final_response: str
     iteration: int
+    session_id: str | None
+    org_id: str | None
     agent_trace: Annotated[list[dict], lambda a, b: a + b]
+    tool_calls: Annotated[list[dict], lambda a, b: a + b]
 
 
 def _to_lc_messages(messages: list[dict]) -> list[BaseMessage]:
@@ -58,7 +65,16 @@ def _parse_json(text: str) -> dict:
         return {}
 
 
-def build_agent_graph(settings: Settings):
+def _parse_uuid(value: str | None) -> UUID | None:
+    if not value:
+        return None
+    try:
+        return UUID(value)
+    except ValueError:
+        return None
+
+
+def build_agent_graph(settings: Settings, tool_router: Any | None = None):
     planner_llm = ChatOpenAI(model=settings.planner_model, api_key=settings.openai_api_key)
     executor_llm = ChatOpenAI(model=settings.executor_model, api_key=settings.openai_api_key)
     critic_llm = ChatOpenAI(model=settings.critic_model, api_key=settings.openai_api_key)
@@ -102,15 +118,79 @@ def build_agent_graph(settings: Settings):
 
     async def executor(state: OrchestratorState) -> dict:
         history = _to_lc_messages(state["messages"])
+        tool_list = ""
+        if tool_router and settings.tools_enabled:
+            tools = tool_router.list_tools()
+            if tools:
+                tool_list = "\n\nAvailable tools:\n" + "\n".join(
+                    f"- {t.name}: {t.description}" for t in tools
+                )
+
         prompt = (
-            f"{EXECUTOR_PROMPT}\n\nPlan:\n{state.get('plan', '')}\n\n"
+            f"{EXECUTOR_PROMPT}{tool_list}\n\nPlan:\n{state.get('plan', '')}\n\n"
             f"User message: {state['user_input']}"
         )
-        response = await executor_llm.ainvoke(history + [HumanMessage(content=prompt)])
-        draft = response.content if isinstance(response.content, str) else str(response.content)
+        lc_messages: list[BaseMessage] = history + [HumanMessage(content=prompt)]
+        tool_trace: list[dict] = []
+        recorded_calls: list[dict] = []
+        org_id = _parse_uuid(state.get("org_id"))
+        session_id = _parse_uuid(state.get("session_id"))
+
+        lc_tools = (
+            tool_router.get_langchain_tools()
+            if tool_router and settings.tools_enabled
+            else []
+        )
+        llm = executor_llm.bind_tools(lc_tools) if lc_tools else executor_llm
+
+        draft = ""
+        response: AIMessage | None = None
+        for _ in range(settings.max_tool_iterations + 1):
+            response = await llm.ainvoke(lc_messages)
+            tool_calls = getattr(response, "tool_calls", None) or []
+            if not tool_calls:
+                draft = (
+                    response.content
+                    if isinstance(response.content, str)
+                    else str(response.content)
+                )
+                break
+
+            lc_messages.append(response)
+            for tc in tool_calls:
+                tool_name = tc["name"]
+                args = tc.get("args", {})
+                tool_result = await tool_router.execute(
+                    tool_name,
+                    args,
+                    org_id=org_id,
+                    session_id=session_id,
+                )
+                output = tool_result.output or tool_result.error or ""
+                recorded_calls.append({
+                    "tool": tool_name,
+                    "arguments": args,
+                    "status": tool_result.status.value,
+                    "output": output[:500],
+                })
+                tool_trace.extend(
+                    _trace("tool", tool_result.status.value, f"{tool_name}: {output[:120]}")
+                )
+                lc_messages.append(
+                    ToolMessage(content=output, tool_call_id=tc["id"])
+                )
+        else:
+            if response is not None:
+                draft = (
+                    response.content
+                    if isinstance(response.content, str)
+                    else str(response.content)
+                )
+
         return {
             "draft_response": draft,
-            "agent_trace": _trace("executor", "completed", draft[:200]),
+            "agent_trace": _trace("executor", "completed", draft[:200]) + tool_trace,
+            "tool_calls": recorded_calls,
         }
 
     async def critic(state: OrchestratorState) -> dict:

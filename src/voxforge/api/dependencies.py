@@ -8,14 +8,21 @@ from voxforge.config import Settings, get_settings
 from voxforge.core.domain.auth import Principal
 from voxforge.core.events.bus import EventBus, get_event_bus
 from voxforge.core.exceptions import ForbiddenError, UnauthorizedError
+from voxforge.infrastructure.db.memory_repository import MemoryRepository
 from voxforge.infrastructure.db.session import get_db_session
+from voxforge.infrastructure.db.tool_repository import ToolCallRepository
+from voxforge.infrastructure.providers.embeddings.openai import OpenAIEmbeddingProvider
 from voxforge.infrastructure.providers.llm.openai import OpenAILLMProvider
 from voxforge.infrastructure.providers.stt.deepgram import DeepgramSTTProvider
 from voxforge.infrastructure.providers.tts.cartesia import CartesiaTTSProvider
 from voxforge.infrastructure.redis.client import get_redis
 from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
+from voxforge.infrastructure.tools.mcp_adapter import MCPToolAdapter
 from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
 from voxforge.modules.auth.application.service import AuthService
+from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
+from voxforge.modules.mcp_tool_router.application.router import ToolRouter
+from voxforge.modules.memory.application.service import MemoryService
 from voxforge.modules.session_manager.application.service import SessionManager
 from voxforge.modules.voice_gateway.application.pipeline import VoicePipelineService
 
@@ -99,11 +106,40 @@ def get_tts_provider(settings: Settings = Depends(get_settings)) -> CartesiaTTSP
     return CartesiaTTSProvider(settings.cartesia_api_key)
 
 
+def get_memory_service(
+    db: AsyncSession = Depends(get_db_session),
+    llm: OpenAILLMProvider = Depends(get_llm_provider),
+    settings: Settings = Depends(get_settings),
+) -> MemoryService | None:
+    if not settings.memory_enabled:
+        return None
+    store = MemoryRepository(db)
+    embedder = OpenAIEmbeddingProvider(
+        settings.openai_api_key,
+        model=settings.memory_embedding_model,
+    )
+    return MemoryService(store, embedder, settings, llm)
+
+
+def get_tool_router(
+    db: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+) -> ToolRouter | None:
+    if not settings.tools_enabled:
+        return None
+    mcp = MCPToolAdapter(settings.mcp_servers_config) if settings.mcp_servers_config else None
+    registry = ToolRegistry(mcp)
+    repo = ToolCallRepository(db)
+    return ToolRouter(registry, settings, repo)
+
+
 def get_response_generator(
     llm: OpenAILLMProvider = Depends(get_llm_provider),
     settings: Settings = Depends(get_settings),
+    memory_service: MemoryService | None = Depends(get_memory_service),
+    tool_router: ToolRouter | None = Depends(get_tool_router),
 ):
-    return create_response_generator(settings, llm)
+    return create_response_generator(settings, llm, memory_service, tool_router)
 
 
 def get_pipeline(
@@ -112,5 +148,8 @@ def get_pipeline(
     response_generator=Depends(get_response_generator),
     tts: CartesiaTTSProvider = Depends(get_tts_provider),
     settings: Settings = Depends(get_settings),
+    memory_service: MemoryService | None = Depends(get_memory_service),
 ) -> VoicePipelineService:
-    return VoicePipelineService(session_manager, stt, response_generator, tts, settings)
+    return VoicePipelineService(
+        session_manager, stt, response_generator, tts, settings, memory_service
+    )
