@@ -14,8 +14,8 @@ from voxforge.infrastructure.providers.stt.deepgram import DeepgramSTTProvider
 from voxforge.infrastructure.providers.tts.cartesia import CartesiaTTSProvider
 from voxforge.infrastructure.redis.client import get_redis
 from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
+from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
 from voxforge.modules.auth.application.service import AuthService
-from voxforge.modules.conversation.application.engine import ConversationEngine
 from voxforge.modules.session_manager.application.service import SessionManager
 from voxforge.modules.voice_gateway.application.pipeline import VoicePipelineService
 
@@ -99,18 +99,18 @@ def get_tts_provider(settings: Settings = Depends(get_settings)) -> CartesiaTTSP
     return CartesiaTTSProvider(settings.cartesia_api_key)
 
 
-def get_conversation_engine(
+def get_response_generator(
     llm: OpenAILLMProvider = Depends(get_llm_provider),
     settings: Settings = Depends(get_settings),
-) -> ConversationEngine:
-    return ConversationEngine(llm, settings)
+):
+    return create_response_generator(settings, llm)
 
 
 def get_pipeline(
     session_manager: SessionManager = Depends(get_session_manager),
     stt: DeepgramSTTProvider = Depends(get_stt_provider),
-    conversation: ConversationEngine = Depends(get_conversation_engine),
+    response_generator=Depends(get_response_generator),
     tts: CartesiaTTSProvider = Depends(get_tts_provider),
     settings: Settings = Depends(get_settings),
 ) -> VoicePipelineService:
-    return VoicePipelineService(session_manager, stt, conversation, tts, settings)
+    return VoicePipelineService(session_manager, stt, response_generator, tts, settings)

@@ -40,6 +40,14 @@ class Settings(BaseSettings):
 
     auth_required: bool = True
 
+    orchestrator_mode: str = "single"  # single | multi_agent
+    max_agent_iterations: int = 2
+    planner_model: str = "gpt-4o-mini"
+    executor_model: str = "gpt-4o-mini"
+    critic_model: str = "gpt-4o-mini"
+    safety_model: str = "gpt-4o-mini"
+    coordinator_model: str = "gpt-4o-mini"
+
 
 @lru_cache
 def get_settings() -> Settings:

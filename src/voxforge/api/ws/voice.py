@@ -19,8 +19,8 @@ from voxforge.infrastructure.providers.stt.deepgram import DeepgramSTTProvider
 from voxforge.infrastructure.providers.tts.cartesia import CartesiaTTSProvider
 from voxforge.infrastructure.redis.client import get_redis
 from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
+from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
 from voxforge.modules.auth.application.service import AuthService
-from voxforge.modules.conversation.application.engine import ConversationEngine
 from voxforge.modules.session_manager.application.service import SessionManager
 from voxforge.modules.voice_gateway.application.pipeline import (
     PipelineCallbacks,
@@ -55,9 +55,11 @@ async def voice_websocket(websocket: WebSocket) -> None:
             session_manager = SessionManager(db_session, state_store, event_bus, settings)
             stt = DeepgramSTTProvider(settings.deepgram_api_key)
             llm = OpenAILLMProvider(settings.openai_api_key)
+            response_generator = create_response_generator(settings, llm)
             tts = CartesiaTTSProvider(settings.cartesia_api_key)
-            conversation = ConversationEngine(llm, settings)
-            pipeline = VoicePipelineService(session_manager, stt, conversation, tts, settings)
+            pipeline = VoicePipelineService(
+                session_manager, stt, response_generator, tts, settings
+            )
 
             while True:
                 message = await websocket.receive()
@@ -71,7 +73,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         websocket=websocket,
                         session_manager=session_manager,
                         auth_service=auth_service,
-                        conversation=conversation,
+                        response_generator=response_generator,
                         pipeline=pipeline,
                         audio_queue=audio_queue,
                         session_id=session_id,
@@ -127,7 +129,7 @@ async def _handle_control_message(
     websocket: WebSocket,
     session_manager: SessionManager,
     auth_service: AuthService,
-    conversation: ConversationEngine,
+    response_generator,
     pipeline: VoicePipelineService,
     audio_queue: asyncio.Queue,
     session_id: UUID | None,
@@ -181,10 +183,10 @@ async def _handle_control_message(
         session = await session_manager.activate_session(session.id)
         await session_manager.commit()
 
-        conversation.init_session(session.id)
+        response_generator.init_session(session.id)
         messages = await session_manager.get_messages(session.id)
         if messages:
-            conversation.load_history(session.id, messages)
+            response_generator.load_history(session.id, messages)
 
         result["session_id"] = session.id
         active_sessions.inc()
@@ -225,7 +227,7 @@ async def _handle_control_message(
                 heartbeat_task.cancel()
             await session_manager.end_session(session_id)
             await session_manager.commit()
-            conversation.clear_session(session_id)
+            response_generator.clear_session(session_id)
             active_sessions.dec()
             result["session_id"] = None
             await websocket.send_json({"type": "ended", "session_id": str(session_id)})
@@ -266,10 +268,19 @@ def _build_callbacks(websocket: WebSocket) -> PipelineCallbacks:
     async def on_error(code: str, message: str) -> None:
         await websocket.send_json({"type": "error", "code": code, "message": message})
 
+    async def on_agent_step(agent: str, status: str, payload: dict) -> None:
+        await websocket.send_json({
+            "type": "agent_step",
+            "agent": agent,
+            "status": status,
+            **payload,
+        })
+
     return PipelineCallbacks(
         on_transcript=on_transcript,
         on_token=on_token,
         on_audio=on_audio,
         on_metrics=on_metrics,
         on_error=on_error,
+        on_agent_step=on_agent_step,
     )

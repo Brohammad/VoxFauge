@@ -28,6 +28,7 @@ API docs: http://localhost:8000/api/v1/docs
 VoxForge is a modular monolith built with Clean Architecture principles:
 
 - **Authentication** — JWT, RBAC, organizations, API keys
+- **Agent Orchestrator** — LangGraph multi-agent pipeline (planner, safety, executor, critic, coordinator)
 - **Voice Gateway** — WebSocket transport for real-time audio streaming
 - **Session Manager** — Voice session lifecycle and reconnect support
 - **STT Module** — Streaming speech recognition (Deepgram)

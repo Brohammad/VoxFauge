@@ -9,6 +9,7 @@ from voxforge.config import Settings
 from voxforge.core.domain.entities import SessionPhase, TurnMetrics
 from voxforge.core.domain.events import AudioChunk, TranscriptEvent
 from voxforge.core.interfaces.providers import SpeechProvider, TTSProvider
+from voxforge.core.interfaces.response_generator import ResponseGenerator
 from voxforge.infrastructure.observability.logging import get_logger
 from voxforge.infrastructure.observability.metrics import (
     e2e_turn_latency_seconds,
@@ -19,7 +20,6 @@ from voxforge.infrastructure.observability.metrics import (
     turns_interrupted,
 )
 from voxforge.infrastructure.providers.tts.cartesia import token_stream_to_sentences
-from voxforge.modules.conversation.application.engine import ConversationEngine
 from voxforge.modules.session_manager.application.service import SessionManager
 
 logger = get_logger(__name__)
@@ -32,6 +32,7 @@ class PipelineCallbacks:
     on_audio: Callable[[AudioChunk], Any] = field(default=lambda c: None)
     on_metrics: Callable[[TurnMetrics], Any] = field(default=lambda m: None)
     on_error: Callable[[str, str], Any] = field(default=lambda c, m: None)
+    on_agent_step: Callable[[str, str, dict], Any] = field(default=lambda a, s, p: None)
 
 
 class VoicePipelineService:
@@ -39,13 +40,13 @@ class VoicePipelineService:
         self,
         session_manager: SessionManager,
         stt_provider: SpeechProvider,
-        conversation_engine: ConversationEngine,
+        response_generator: ResponseGenerator,
         tts_provider: TTSProvider,
         settings: Settings,
     ) -> None:
         self._sessions = session_manager
         self._stt = stt_provider
-        self._conversation = conversation_engine
+        self._response_generator = response_generator
         self._tts = tts_provider
         self._settings = settings
         self._interrupt_event: asyncio.Event | None = None
@@ -122,16 +123,22 @@ class VoicePipelineService:
         await self._sessions.save_user_message(
             session_id, transcript, metadata={"confidence": confidence}
         )
-        self._conversation.add_user_message(session_id, transcript)
+        self._response_generator.add_user_message(session_id, transcript)
 
         assistant_text = ""
         llm_start = time.monotonic()
         first_token_time: float | None = None
         first_audio_time: float | None = None
 
+        async def on_agent_step(agent: str, status: str, payload: dict) -> None:
+            await self._maybe_await(callbacks.on_agent_step(agent, status, payload))
+
         async def token_iter() -> AsyncIterator[str]:
             nonlocal assistant_text, first_token_time
-            async for event in self._conversation.generate_response(session_id):
+            async for event in self._response_generator.generate_response(
+                session_id,
+                on_agent_step=on_agent_step,
+            ):
                 if self._interrupt_event and self._interrupt_event.is_set():
                     break
                 if event.text:
@@ -175,8 +182,12 @@ class VoicePipelineService:
             await self._maybe_await(callbacks.on_error("tts_error", str(exc)))
 
         if assistant_text:
-            self._conversation.add_assistant_message(session_id, assistant_text)
-            await self._sessions.save_assistant_message(session_id, assistant_text)
+            trace = self._response_generator.get_last_agent_trace(session_id)
+            metadata = {"agent_trace": trace} if trace else {}
+            self._response_generator.add_assistant_message(session_id, assistant_text)
+            await self._sessions.save_assistant_message(
+                session_id, assistant_text, metadata=metadata
+            )
 
         await self._sessions.save_turn_metrics(session_id, metrics)
         await self._sessions.commit()

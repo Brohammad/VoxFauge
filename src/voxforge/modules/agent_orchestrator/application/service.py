@@ -6,8 +6,8 @@ from uuid import UUID
 from voxforge.config import Settings
 from voxforge.core.domain.entities import Message, MessageRole
 from voxforge.core.domain.events import TokenEvent
-from voxforge.core.interfaces.providers import LLMProvider
 from voxforge.infrastructure.observability.logging import get_logger
+from voxforge.modules.agent_orchestrator.application.graph import build_agent_graph
 
 logger = get_logger(__name__)
 
@@ -18,16 +18,20 @@ class _ChatMessage:
     content: str
 
 
-class ConversationEngine:
-    def __init__(self, llm_provider: LLMProvider, settings: Settings) -> None:
-        self._llm = llm_provider
+class AgentOrchestrator:
+    """LangGraph multi-agent orchestrator (planner, safety, executor, critic, coordinator)."""
+
+    def __init__(self, settings: Settings) -> None:
         self._settings = settings
+        self._graph = build_agent_graph(settings)
         self._history: dict[UUID, list[_ChatMessage]] = {}
+        self._traces: dict[UUID, list[dict]] = {}
 
     def init_session(self, session_id: UUID) -> None:
         self._history[session_id] = [
             _ChatMessage(role=MessageRole.SYSTEM, content=self._settings.system_prompt)
         ]
+        self._traces[session_id] = []
 
     def add_user_message(self, session_id: UUID, content: str) -> None:
         if session_id not in self._history:
@@ -56,14 +60,56 @@ class ConversationEngine:
         on_agent_step: Callable[[str, str, dict], Any] | None = None,
     ) -> AsyncIterator[TokenEvent]:
         history = self._history.get(session_id, [])
-        model = model or self._settings.default_llm_model
+        user_input = ""
+        for msg in reversed(history):
+            if msg.role == MessageRole.USER:
+                user_input = msg.content
+                break
 
-        logger.info("conversation_generate", session_id=str(session_id), model=model)
-        async for event in self._llm.generate_stream(history, model=model):
-            yield event
+        messages = [{"role": m.role.value, "content": m.content} for m in history]
+
+        logger.info("agent_orchestrator_run", session_id=str(session_id))
+        result = await self._graph.ainvoke({
+            "messages": messages,
+            "user_input": user_input,
+            "plan": "",
+            "draft_response": "",
+            "safety_passed": True,
+            "safety_reason": "",
+            "critic_approved": False,
+            "critic_feedback": "",
+            "final_response": "",
+            "iteration": 0,
+            "agent_trace": [],
+        })
+
+        trace = result.get("agent_trace", [])
+        self._traces[session_id] = trace
+
+        if on_agent_step:
+            for step in trace:
+                await _maybe_await(
+                    on_agent_step(step["agent"], step["status"], {"summary": step["summary"]})
+                )
+
+        final = result.get("final_response") or result.get("draft_response", "")
+        if not final:
+            final = "I'm sorry, I couldn't generate a response."
+
+        for word in final.split():
+            yield TokenEvent(text=word + " ", is_final=False)
+        yield TokenEvent(text="", is_final=True)
 
     def clear_session(self, session_id: UUID) -> None:
         self._history.pop(session_id, None)
+        self._traces.pop(session_id, None)
 
     def get_last_agent_trace(self, session_id: UUID) -> list[dict]:
-        return []
+        return self._traces.get(session_id, [])
+
+
+async def _maybe_await(result: Any) -> None:
+    import asyncio
+
+    if asyncio.iscoroutine(result):
+        await result
