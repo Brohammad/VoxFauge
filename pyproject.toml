@@ -27,6 +27,9 @@ dependencies = [
     "opentelemetry-exporter-otlp>=1.29.0",
     "structlog>=24.4.0",
     "python-multipart>=0.0.18",
+    "pyjwt>=2.10.0",
+    "bcrypt>=4.2.0",
+    "email-validator>=2.2.0",
 ]
 
 [project.optional-dependencies]

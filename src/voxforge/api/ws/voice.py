@@ -5,10 +5,12 @@ from uuid import UUID
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from voxforge.api.ws.auth import resolve_ws_principal
 from voxforge.config import get_settings
 from voxforge.core.domain.entities import TransportType
 from voxforge.core.domain.events import AudioChunk, TranscriptEvent
 from voxforge.core.events.bus import get_event_bus
+from voxforge.core.exceptions import ForbiddenError, SessionNotFoundError, UnauthorizedError
 from voxforge.infrastructure.db.session import get_engine
 from voxforge.infrastructure.observability.logging import get_logger
 from voxforge.infrastructure.observability.metrics import active_sessions, ws_connections
@@ -17,6 +19,7 @@ from voxforge.infrastructure.providers.stt.deepgram import DeepgramSTTProvider
 from voxforge.infrastructure.providers.tts.cartesia import CartesiaTTSProvider
 from voxforge.infrastructure.redis.client import get_redis
 from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
+from voxforge.modules.auth.application.service import AuthService
 from voxforge.modules.conversation.application.engine import ConversationEngine
 from voxforge.modules.session_manager.application.service import SessionManager
 from voxforge.modules.voice_gateway.application.pipeline import (
@@ -48,6 +51,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 get_redis(), ttl_seconds=settings.session_state_ttl_seconds
             )
             event_bus = get_event_bus()
+            auth_service = AuthService(db_session, settings)
             session_manager = SessionManager(db_session, state_store, event_bus, settings)
             stt = DeepgramSTTProvider(settings.deepgram_api_key)
             llm = OpenAILLMProvider(settings.openai_api_key)
@@ -66,6 +70,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         message["text"],
                         websocket=websocket,
                         session_manager=session_manager,
+                        auth_service=auth_service,
                         conversation=conversation,
                         pipeline=pipeline,
                         audio_queue=audio_queue,
@@ -121,6 +126,7 @@ async def _handle_control_message(
     *,
     websocket: WebSocket,
     session_manager: SessionManager,
+    auth_service: AuthService,
     conversation: ConversationEngine,
     pipeline: VoicePipelineService,
     audio_queue: asyncio.Queue,
@@ -145,14 +151,31 @@ async def _handle_control_message(
         config = msg.get("config", {})
         resume_id = msg.get("session_id")
 
+        try:
+            principal = await resolve_ws_principal(websocket, auth_service, settings, msg)
+        except (UnauthorizedError, ForbiddenError) as exc:
+            await websocket.send_json({"type": "error", "code": exc.code, "message": exc.message})
+            return result
+
         if resume_id:
-            session = await session_manager.resume_session(
-                UUID(resume_id), msg.get("last_sequence", 0)
-            )
+            try:
+                session = await session_manager.get_session(
+                    UUID(resume_id), org_id=principal.org_id
+                )
+                session = await session_manager.resume_session(
+                    UUID(resume_id), msg.get("last_sequence", 0)
+                )
+            except SessionNotFoundError:
+                await websocket.send_json(
+                    {"type": "error", "code": "session_not_found", "message": "Session not found"}
+                )
+                return result
         else:
             session = await session_manager.create_session(
                 transport_type=TransportType.WEBSOCKET,
                 config=config,
+                org_id=principal.org_id,
+                created_by_user_id=principal.user_id,
             )
 
         session = await session_manager.activate_session(session.id)

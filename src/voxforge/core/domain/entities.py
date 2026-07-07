@@ -35,6 +35,8 @@ class VoiceSession(BaseModel):
     id: UUID
     status: SessionStatus
     transport_type: TransportType = TransportType.WEBSOCKET
+    org_id: UUID | None = None
+    created_by_user_id: UUID | None = None
     metadata: dict = Field(default_factory=dict)
     started_at: datetime
     ended_at: datetime | None = None

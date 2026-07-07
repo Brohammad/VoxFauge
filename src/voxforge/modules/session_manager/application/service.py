@@ -37,10 +37,14 @@ class SessionManager:
         *,
         transport_type: TransportType = TransportType.WEBSOCKET,
         config: dict | None = None,
+        org_id: UUID | None = None,
+        created_by_user_id: UUID | None = None,
     ) -> VoiceSession:
         session = await self._repo.create(
             transport_type=transport_type,
             metadata=config or {},
+            org_id=org_id,
+            created_by_user_id=created_by_user_id,
         )
         state = SessionState(session_id=session.id, config=config or {})
         await self._state_store.save_state(state)
@@ -115,8 +119,8 @@ class SessionManager:
         if metrics.e2e_ms is not None:
             await self._repo.add_metric(session_id, metric_name="e2e_ms", value_ms=metrics.e2e_ms)
 
-    async def get_session(self, session_id: UUID) -> VoiceSession:
-        return await self._repo.get(session_id)
+    async def get_session(self, session_id: UUID, *, org_id: UUID | None = None) -> VoiceSession:
+        return await self._repo.get(session_id, org_id=org_id)
 
     async def set_interrupt(self, session_id: UUID) -> SessionState:
         return await self._state_store.set_interrupt(session_id, True)

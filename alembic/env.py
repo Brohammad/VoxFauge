@@ -9,8 +9,13 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from voxforge.config import get_settings
 from voxforge.infrastructure.db.base import Base
 from voxforge.infrastructure.db.models import (  # noqa: F401
+    ApiKeyModel,
+    AuditLogModel,
     MessageModel,
+    OrganizationMemberModel,
+    OrganizationModel,
     SessionMetricModel,
+    UserModel,
     VoiceSessionModel,
 )
 

@@ -30,6 +30,16 @@ class Settings(BaseSettings):
         "since they will be spoken aloud."
     )
 
+    jwt_secret_key: str = "change-me-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 60
+    jwt_refresh_token_expire_days: int = 7
+
+    api_key_prefix: str = "vxf_"
+    api_key_hash_pepper: str = "change-me-in-production"
+
+    auth_required: bool = True
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -24,20 +24,26 @@ class SessionRepository:
         *,
         transport_type: TransportType = TransportType.WEBSOCKET,
         metadata: dict | None = None,
+        org_id: UUID | None = None,
+        created_by_user_id: UUID | None = None,
     ) -> VoiceSession:
         model = VoiceSessionModel(
             status=SessionStatus.CREATED,
             transport_type=transport_type,
             metadata_=metadata or {},
+            org_id=org_id,
+            created_by_user_id=created_by_user_id,
         )
         self._session.add(model)
         await self._session.flush()
         await self._session.refresh(model)
         return self._to_entity(model)
 
-    async def get(self, session_id: UUID) -> VoiceSession:
+    async def get(self, session_id: UUID, *, org_id: UUID | None = None) -> VoiceSession:
         model = await self._session.get(VoiceSessionModel, session_id)
         if model is None:
+            raise SessionNotFoundError(str(session_id))
+        if org_id is not None and model.org_id != org_id:
             raise SessionNotFoundError(str(session_id))
         return self._to_entity(model)
 
@@ -117,6 +123,8 @@ class SessionRepository:
             id=model.id,
             status=SessionStatus(model.status),
             transport_type=TransportType(model.transport_type),
+            org_id=model.org_id,
+            created_by_user_id=model.created_by_user_id,
             metadata=model.metadata_,
             started_at=model.started_at,
             ended_at=model.ended_at,

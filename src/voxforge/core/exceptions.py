@@ -25,3 +25,33 @@ class ProviderError(VoxForgeError):
 class PipelineError(VoxForgeError):
     def __init__(self, message: str) -> None:
         super().__init__(message, code="pipeline_error")
+
+
+class UnauthorizedError(VoxForgeError):
+    def __init__(self, message: str = "Unauthorized") -> None:
+        super().__init__(message, code="unauthorized")
+
+
+class ForbiddenError(VoxForgeError):
+    def __init__(self, message: str = "Forbidden") -> None:
+        super().__init__(message, code="forbidden")
+
+
+class InvalidCredentialsError(VoxForgeError):
+    def __init__(self, message: str = "Invalid credentials") -> None:
+        super().__init__(message, code="invalid_credentials")
+
+
+class UserNotFoundError(VoxForgeError):
+    def __init__(self, identifier: str) -> None:
+        super().__init__(f"User not found: {identifier}", code="user_not_found")
+
+
+class OrganizationNotFoundError(VoxForgeError):
+    def __init__(self, org_id: str) -> None:
+        super().__init__(f"Organization not found: {org_id}", code="organization_not_found")
+
+
+class ApiKeyNotFoundError(VoxForgeError):
+    def __init__(self, key_id: str) -> None:
+        super().__init__(f"API key not found: {key_id}", code="api_key_not_found")

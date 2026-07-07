@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from voxforge.api.dependencies import get_session_manager
+from voxforge.api.dependencies import get_session_manager, require_scope
+from voxforge.core.domain.auth import Principal
 from voxforge.core.domain.entities import SessionStatus, TransportType, VoiceSession
 from voxforge.core.exceptions import SessionNotFoundError
 from voxforge.infrastructure.db.session import get_db_session
@@ -28,6 +29,7 @@ class SessionResponse(BaseModel):
     id: UUID
     status: SessionStatus
     transport_type: TransportType
+    org_id: UUID | None = None
     metadata: dict
     started_at: str
     ended_at: str | None = None
@@ -39,6 +41,7 @@ class SessionResponse(BaseModel):
             id=session.id,
             status=session.status,
             transport_type=session.transport_type,
+            org_id=session.org_id,
             metadata=session.metadata,
             started_at=session.started_at.isoformat(),
             ended_at=session.ended_at.isoformat() if session.ended_at else None,
@@ -64,12 +67,15 @@ class MessagesListResponse(BaseModel):
 @router.post("", response_model=CreateSessionResponse, status_code=201)
 async def create_session(
     body: CreateSessionRequest,
+    principal: Principal = Depends(require_scope("sessions:write")),
     session_manager: SessionManager = Depends(get_session_manager),
     db: AsyncSession = Depends(get_db_session),
 ) -> CreateSessionResponse:
     session = await session_manager.create_session(
         transport_type=body.transport_type,
         config=body.config,
+        org_id=principal.org_id,
+        created_by_user_id=principal.user_id,
     )
     await session_manager.commit()
     return CreateSessionResponse(
@@ -82,10 +88,11 @@ async def create_session(
 @router.get("/{session_id}", response_model=SessionResponse)
 async def get_session(
     session_id: UUID,
+    principal: Principal = Depends(require_scope("sessions:read")),
     session_manager: SessionManager = Depends(get_session_manager),
 ) -> SessionResponse:
     try:
-        session = await session_manager.get_session(session_id)
+        session = await session_manager.get_session(session_id, org_id=principal.org_id)
     except SessionNotFoundError:
         raise HTTPException(status_code=404, detail="Session not found") from None
     return SessionResponse.from_entity(session)
@@ -96,9 +103,11 @@ async def get_messages(
     session_id: UUID,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    principal: Principal = Depends(require_scope("sessions:read")),
     session_manager: SessionManager = Depends(get_session_manager),
 ) -> MessagesListResponse:
     try:
+        await session_manager.get_session(session_id, org_id=principal.org_id)
         messages = await session_manager.get_messages(session_id, offset=offset, limit=limit)
     except SessionNotFoundError:
         raise HTTPException(status_code=404, detail="Session not found") from None
@@ -123,10 +132,12 @@ async def get_messages(
 @router.delete("/{session_id}", response_model=SessionResponse)
 async def end_session(
     session_id: UUID,
+    principal: Principal = Depends(require_scope("sessions:delete")),
     session_manager: SessionManager = Depends(get_session_manager),
     db: AsyncSession = Depends(get_db_session),
 ) -> SessionResponse:
     try:
+        await session_manager.get_session(session_id, org_id=principal.org_id)
         session = await session_manager.end_session(session_id)
         await session_manager.commit()
     except SessionNotFoundError:
