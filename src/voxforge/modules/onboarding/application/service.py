@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from voxforge.core.domain.entities import TransportType, TurnMetrics
 from voxforge.infrastructure.db.models import OnboardingRunModel, SupportTemplateModel
 from voxforge.infrastructure.db.outcome_repository import OutcomeRepository
+from voxforge.infrastructure.observability.metrics import onboarding_steps_total
 from voxforge.modules.outcomes.application.service import OutcomeExtractionService
 from voxforge.modules.session_manager.application.service import SessionManager
 
@@ -25,6 +26,7 @@ class OnboardingService:
         )
         self._db.add(run)
         await self._db.flush()
+        onboarding_steps_total.labels(step="start", status="started").inc()
         return run
 
     async def connect_token(
@@ -35,6 +37,7 @@ class OnboardingService:
         run.connected_at = datetime.now(UTC)
         run.metadata_ = {**(run.metadata_ or {}), "token_preview": token_preview or ""}
         await self._db.flush()
+        onboarding_steps_total.labels(step="connect_token", status="token_connected").inc()
         return run
 
     async def run_sample_call(
@@ -90,6 +93,7 @@ class OnboardingService:
         run.completed_at = datetime.now(UTC)
         run.metadata_ = {**(run.metadata_ or {}), "sample_call": "passed"}
         await self._db.flush()
+        onboarding_steps_total.labels(step="run_sample_call", status="test_call_passed").inc()
         return run
 
     async def status(self, org_id: UUID) -> OnboardingRunModel | None:

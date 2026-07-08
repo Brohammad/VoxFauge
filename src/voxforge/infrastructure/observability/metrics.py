@@ -70,3 +70,18 @@ evaluation_score_histogram = Histogram(
     "Overall evaluation score per turn",
     buckets=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
 )
+outcome_records_total = Counter(
+    "voxforge_outcome_records_total",
+    "Total session outcome KPI records written",
+    ["intent", "task_success", "escalation"],
+)
+outcome_resolution_seconds = Histogram(
+    "voxforge_outcome_resolution_seconds",
+    "Recorded resolution time for outcome KPIs",
+    buckets=(5, 15, 30, 60, 120, 300, 600),
+)
+onboarding_steps_total = Counter(
+    "voxforge_onboarding_steps_total",
+    "Onboarding funnel step transitions",
+    ["step", "status"],
+)

@@ -1,6 +1,11 @@
 from typing import Protocol
 from uuid import UUID
 
+from voxforge.infrastructure.observability.metrics import (
+    outcome_records_total,
+    outcome_resolution_seconds,
+)
+
 
 class OutcomeStore(Protocol):
     async def upsert_session_outcome(
@@ -54,6 +59,12 @@ class OutcomeExtractionService:
             escalation=escalation,
             resolution_time_seconds=effective_resolution_seconds,
         )
+        outcome_records_total.labels(
+            intent=intent,
+            task_success=str(task_success).lower(),
+            escalation=str(escalation).lower(),
+        ).inc()
+        outcome_resolution_seconds.observe(effective_resolution_seconds)
 
     @staticmethod
     def _derive_intent(user_transcript: str, user_metadata: dict) -> str:
