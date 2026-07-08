@@ -11,6 +11,7 @@ from voxforge.core.exceptions import ForbiddenError, UnauthorizedError
 from voxforge.infrastructure.db.dashboard_repository import DashboardRepository
 from voxforge.infrastructure.db.evaluation_repository import EvaluationRepository
 from voxforge.infrastructure.db.memory_repository import MemoryRepository
+from voxforge.infrastructure.db.outcome_repository import OutcomeRepository
 from voxforge.infrastructure.db.session import get_db_session
 from voxforge.infrastructure.db.tool_repository import ToolCallRepository
 from voxforge.infrastructure.livekit.token_service import LiveKitTokenService
@@ -32,6 +33,7 @@ from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
 from voxforge.modules.mcp_tool_router.application.router import ToolRouter
 from voxforge.modules.memory.application.service import MemoryService
 from voxforge.modules.onboarding.application.service import OnboardingService
+from voxforge.modules.outcomes.application.service import OutcomeExtractionService
 from voxforge.modules.session_manager.application.service import SessionManager
 from voxforge.modules.voice_gateway.application.pipeline import VoicePipelineService
 
@@ -168,6 +170,12 @@ def get_onboarding_service(
     return OnboardingService(db)
 
 
+def get_outcome_service(
+    db: AsyncSession = Depends(get_db_session),
+) -> OutcomeExtractionService:
+    return OutcomeExtractionService(OutcomeRepository(db))
+
+
 def get_response_generator(
     llm: OpenAILLMProvider = Depends(get_llm_provider),
     settings: Settings = Depends(get_settings),
@@ -185,6 +193,7 @@ def get_pipeline(
     settings: Settings = Depends(get_settings),
     memory_service: MemoryService | None = Depends(get_memory_service),
     evaluation_engine: EvaluationEngine | None = Depends(get_evaluation_engine),
+    outcome_service: OutcomeExtractionService = Depends(get_outcome_service),
 ) -> VoicePipelineService:
     return VoicePipelineService(
         session_manager,
@@ -194,4 +203,5 @@ def get_pipeline(
         settings,
         memory_service,
         evaluation_engine,
+        outcome_service,
     )

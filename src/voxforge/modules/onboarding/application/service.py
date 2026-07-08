@@ -5,17 +5,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voxforge.core.domain.entities import TransportType, TurnMetrics
-from voxforge.infrastructure.db.models import (
-    OnboardingRunModel,
-    OutcomeKPIModel,
-    SupportTemplateModel,
-)
+from voxforge.infrastructure.db.models import OnboardingRunModel, SupportTemplateModel
+from voxforge.infrastructure.db.outcome_repository import OutcomeRepository
+from voxforge.modules.outcomes.application.service import OutcomeExtractionService
 from voxforge.modules.session_manager.application.service import SessionManager
 
 
 class OnboardingService:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
+        self._outcomes = OutcomeExtractionService(OutcomeRepository(db))
 
     async def start(self, org_id: UUID, user_id: UUID | None) -> OnboardingRunModel:
         run = OnboardingRunModel(
@@ -73,16 +72,18 @@ class OnboardingService:
         )
         await session_manager.end_session(session.id, reason="onboarding_sample")
 
-        self._db.add(
-            OutcomeKPIModel(
-                org_id=org_id,
-                session_id=session.id,
-                intent="billing_contact_change",
-                task_success=True,
-                escalation=False,
-                resolution_time_seconds=95.0,
-                recorded_at=datetime.now(UTC),
-            )
+        await self._outcomes.record_outcome(
+            org_id=org_id,
+            session_id=session.id,
+            user_transcript="Hi, I need help changing the billing contact on my account.",
+            assistant_response=(
+                "I can help with that. I verified your account "
+                "and updated the billing contact."
+            ),
+            interrupted=False,
+            resolution_time_seconds=95.0,
+            user_metadata={"intent": "billing_contact_change"},
+            assistant_metadata={"task_success": True},
         )
         run.status = "test_call_passed"
         run.test_session_id = session.id

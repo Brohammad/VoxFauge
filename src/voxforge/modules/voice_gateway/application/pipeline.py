@@ -25,6 +25,7 @@ from voxforge.modules.session_manager.application.service import SessionManager
 if TYPE_CHECKING:
     from voxforge.modules.evaluation.application.service import EvaluationEngine
     from voxforge.modules.memory.application.service import MemoryService
+    from voxforge.modules.outcomes.application.service import OutcomeExtractionService
 
 logger = get_logger(__name__)
 
@@ -49,6 +50,7 @@ class VoicePipelineService:
         settings: Settings,
         memory_service: "MemoryService | None" = None,
         evaluation_engine: "EvaluationEngine | None" = None,
+        outcome_service: "OutcomeExtractionService | None" = None,
     ) -> None:
         self._sessions = session_manager
         self._stt = stt_provider
@@ -57,6 +59,7 @@ class VoicePipelineService:
         self._settings = settings
         self._memory = memory_service
         self._evaluation = evaluation_engine
+        self._outcomes = outcome_service
         self._session_orgs: dict[UUID, UUID] = {}
         self._interrupt_event: asyncio.Event | None = None
         self._pipeline_task: asyncio.Task | None = None
@@ -134,8 +137,9 @@ class VoicePipelineService:
         self._interrupt_event = asyncio.Event()
 
         await self._sessions.update_phase(session_id, SessionPhase.PROCESSING)
+        user_metadata = {"confidence": confidence}
         user_message = await self._sessions.save_user_message(
-            session_id, transcript, metadata={"confidence": confidence}
+            session_id, transcript, metadata=user_metadata
         )
         org_id = self._session_orgs.get(session_id)
         if self._memory and org_id is not None:
@@ -211,10 +215,10 @@ class VoicePipelineService:
 
         if assistant_text:
             trace = self._response_generator.get_last_agent_trace(session_id)
-            metadata = {"agent_trace": trace} if trace else {}
+            assistant_metadata = {"agent_trace": trace} if trace else {}
             self._response_generator.add_assistant_message(session_id, assistant_text)
             assistant_message = await self._sessions.save_assistant_message(
-                session_id, assistant_text, metadata=metadata
+                session_id, assistant_text, metadata=assistant_metadata
             )
             if self._memory and org_id is not None:
                 await self._memory.store_turn(
@@ -223,8 +227,10 @@ class VoicePipelineService:
                     role=MessageRole.ASSISTANT.value,
                     content=assistant_text,
                     message_id=assistant_message.id,
-                    metadata=metadata,
+                    metadata=assistant_metadata,
                 )
+        else:
+            assistant_metadata = {}
 
         await self._sessions.save_turn_metrics(session_id, metrics)
         if self._evaluation:
@@ -260,6 +266,19 @@ class VoicePipelineService:
                     interrupted=was_interrupted,
                     context_snippets=context_snippets,
                 )
+            )
+        if self._outcomes:
+            await self._outcomes.record_outcome(
+                org_id=org_id,
+                session_id=session_id,
+                user_transcript=transcript,
+                assistant_response=assistant_text,
+                interrupted=was_interrupted,
+                resolution_time_seconds=(
+                    metrics.e2e_ms / 1000 if metrics.e2e_ms is not None else None
+                ),
+                user_metadata=user_metadata,
+                assistant_metadata=assistant_metadata,
             )
         await self._sessions.commit()
         await self._maybe_await(callbacks.on_metrics(metrics))

@@ -13,6 +13,7 @@ from voxforge.core.events.bus import get_event_bus
 from voxforge.core.exceptions import ForbiddenError, SessionNotFoundError, UnauthorizedError
 from voxforge.infrastructure.db.evaluation_repository import EvaluationRepository
 from voxforge.infrastructure.db.memory_repository import MemoryRepository
+from voxforge.infrastructure.db.outcome_repository import OutcomeRepository
 from voxforge.infrastructure.db.session import get_engine
 from voxforge.infrastructure.db.tool_repository import ToolCallRepository
 from voxforge.infrastructure.observability.logging import get_logger
@@ -30,6 +31,7 @@ from voxforge.modules.evaluation.application.service import EvaluationEngine
 from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
 from voxforge.modules.mcp_tool_router.application.router import ToolRouter
 from voxforge.modules.memory.application.service import MemoryService
+from voxforge.modules.outcomes.application.service import OutcomeExtractionService
 from voxforge.modules.session_manager.application.service import SessionManager
 from voxforge.modules.voice_gateway.application.pipeline import (
     PipelineCallbacks,
@@ -95,6 +97,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 evaluation_engine = EvaluationEngine(
                     EvaluationRepository(db_session), settings
                 )
+            outcome_service = OutcomeExtractionService(OutcomeRepository(db_session))
             tts = CartesiaTTSProvider(settings.cartesia_api_key)
             pipeline = VoicePipelineService(
                 session_manager,
@@ -104,6 +107,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 settings,
                 memory_service,
                 evaluation_engine,
+                outcome_service,
             )
 
             while True:
