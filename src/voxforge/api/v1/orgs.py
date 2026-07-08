@@ -64,7 +64,7 @@ class AuditLogResponse(BaseModel):
 @router.post("", response_model=OrgResponse, status_code=201)
 async def create_org(
     body: CreateOrgRequest,
-    principal: Principal = Depends(get_current_principal),
+    principal: Principal = Depends(require_scope("orgs:write")),
     auth_service: AuthService = Depends(get_auth_service),
     db: AsyncSession = Depends(get_db_session),
 ) -> OrgResponse:
@@ -77,7 +77,7 @@ async def create_org(
 
 @router.get("", response_model=list[OrgResponse])
 async def list_orgs(
-    principal: Principal = Depends(get_current_principal),
+    principal: Principal = Depends(require_scope("orgs:read")),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> list[OrgResponse]:
     if principal.user_id is None:
