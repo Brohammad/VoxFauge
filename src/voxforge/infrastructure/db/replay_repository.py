@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from voxforge.core.domain.replay import (
+    ExplainabilityItem,
     SessionOutcomeSummary,
     SessionReplay,
     SessionReplayEvent,
@@ -177,6 +178,7 @@ class ReplayRepository:
             )
 
         events.sort(key=lambda event: event.timestamp)
+        explanations = self._build_explanations(messages, outcome)
 
         return SessionReplay(
             session_id=session_model.id,
@@ -186,5 +188,67 @@ class ReplayRepository:
             transport_type=session_model.transport_type,
             metadata=session_model.metadata_ or {},
             outcome=outcome,
+            explanations=explanations,
             events=events,
         )
+
+    @staticmethod
+    def _build_explanations(
+        messages: list[MessageModel],
+        outcome: SessionOutcomeSummary | None,
+    ) -> list[ExplainabilityItem]:
+        explanations: list[ExplainabilityItem] = []
+
+        for message in messages:
+            if message.role != "assistant":
+                continue
+            metadata = message.provider_metadata or {}
+            trace = metadata.get("agent_trace")
+            if not isinstance(trace, list):
+                continue
+            for step in trace:
+                if not isinstance(step, dict):
+                    continue
+                agent = str(step.get("agent", ""))
+                status = str(step.get("status", "completed"))
+                summary = str(step.get("summary", "")).strip()
+                if agent == "safety":
+                    explanations.append(
+                        ExplainabilityItem(
+                            kind="safety",
+                            decision="allowed" if status == "completed" else "blocked",
+                            reason=summary or status,
+                        )
+                    )
+                elif agent == "critic":
+                    explanations.append(
+                        ExplainabilityItem(
+                            kind="critic",
+                            decision="approved" if status == "completed" else "revise",
+                            reason=summary or status,
+                        )
+                    )
+                elif agent == "tool":
+                    explanations.append(
+                        ExplainabilityItem(
+                            kind="tool",
+                            decision=status,
+                            reason=summary or "tool step",
+                        )
+                    )
+
+        if outcome is not None:
+            if outcome.task_success:
+                decision = "resolved"
+                reason = f"Intent `{outcome.intent}` completed without escalation."
+            elif outcome.escalation:
+                decision = "escalated"
+                reason = f"Intent `{outcome.intent}` required handoff/escalation."
+            else:
+                decision = "unresolved"
+                reason = f"Intent `{outcome.intent}` did not complete successfully."
+            explanations.append(
+                ExplainabilityItem(kind="outcome", decision=decision, reason=reason)
+            )
+
+        return explanations

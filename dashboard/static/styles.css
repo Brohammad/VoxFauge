@@ -357,6 +357,45 @@ th { color: var(--muted); font-weight: 500; font-size: 0.75rem; text-transform: 
   font-size: 0.85rem;
 }
 
+.explain-list {
+  margin-top: 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.65rem;
+}
+
+.explain-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  padding: 0.7rem 0.8rem;
+}
+
+.explain-kind {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--accent2);
+  margin-bottom: 0.25rem;
+}
+
+.explain-decision {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 0.2rem;
+}
+
+.explain-reason {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.explain-item.safety .explain-kind { color: #fca5a5; }
+.explain-item.critic .explain-kind { color: #86efac; }
+.explain-item.tool .explain-kind { color: #fde68a; }
+.explain-item.outcome .explain-kind { color: #c4b5fd; }
+
 .replay-timeline {
   list-style: none;
   margin-top: 1rem;

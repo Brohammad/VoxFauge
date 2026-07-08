@@ -38,9 +38,18 @@ Requires `sessions:read`. Responses are org-scoped.
 
 Events are sorted ascending by timestamp.
 
+## Explainability panel
+
+Replay responses include `explanations` derived from:
+
+- assistant `provider_metadata.agent_trace` (`safety`, `critic`, `tool`)
+- outcome KPI decision (`resolved` / `escalated` / `unresolved`)
+
+Dashboard Replay renders these above the event timeline.
+
 ## Dashboard usage
 
 1. Open **Sessions** and click **Replay**, or
 2. Open **Replay**, paste a session UUID, and click **Load Replay**
 
-Outcome summary renders above the timeline when available.
+Outcome summary and explainability cards render above the timeline when available.

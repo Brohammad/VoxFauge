@@ -25,6 +25,7 @@ const els = {
   replaySessionInput: document.getElementById("replay-session-input"),
   replayLoadBtn: document.getElementById("replay-load-btn"),
   replayOutcome: document.getElementById("replay-outcome"),
+  replayExplanations: document.getElementById("replay-explanations"),
   replayTimeline: document.getElementById("replay-timeline"),
 };
 
@@ -201,6 +202,19 @@ function renderReplay(replay) {
     ].join(" · ");
   } else {
     els.replayOutcome.textContent = `Session ${shortId(replay.session_id)} (${replay.status}) · no outcome recorded`;
+  }
+
+  const explanations = replay.explanations || [];
+  if (els.replayExplanations) {
+    els.replayExplanations.innerHTML = explanations.length
+      ? explanations.map((item) => `
+          <div class="explain-item ${escapeHtml(item.kind)}">
+            <div class="explain-kind">${escapeHtml(item.kind)}</div>
+            <div class="explain-decision">${escapeHtml(item.decision)}</div>
+            <div class="explain-reason">${escapeHtml(item.reason)}</div>
+          </div>
+        `).join("")
+      : `<div class="card-sub">No explainability signals for this session.</div>`;
   }
 
   const events = replay.events || [];

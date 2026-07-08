@@ -21,6 +21,12 @@ class SessionOutcomeSummary(BaseModel):
     recorded_at: datetime
 
 
+class ExplainabilityItem(BaseModel):
+    kind: str  # safety | critic | tool | outcome
+    decision: str
+    reason: str
+
+
 class SessionReplay(BaseModel):
     session_id: UUID
     status: str
@@ -29,4 +35,5 @@ class SessionReplay(BaseModel):
     transport_type: str
     metadata: dict = Field(default_factory=dict)
     outcome: SessionOutcomeSummary | None = None
+    explanations: list[ExplainabilityItem] = Field(default_factory=list)
     events: list[SessionReplayEvent] = Field(default_factory=list)

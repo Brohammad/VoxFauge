@@ -6,7 +6,12 @@ from pydantic import BaseModel, Field
 
 from voxforge.api.dependencies import get_replay_service, require_scope
 from voxforge.core.domain.auth import Principal
-from voxforge.core.domain.replay import SessionOutcomeSummary, SessionReplay, SessionReplayEvent
+from voxforge.core.domain.replay import (
+    ExplainabilityItem,
+    SessionOutcomeSummary,
+    SessionReplay,
+    SessionReplayEvent,
+)
 from voxforge.core.exceptions import SessionNotFoundError
 from voxforge.modules.replay.application.service import ReplayService
 
@@ -30,6 +35,12 @@ class OutcomeSummaryResponse(BaseModel):
     recorded_at: str
 
 
+class ExplainabilityItemResponse(BaseModel):
+    kind: str
+    decision: str
+    reason: str
+
+
 class SessionReplayResponse(BaseModel):
     session_id: UUID
     status: str
@@ -38,6 +49,7 @@ class SessionReplayResponse(BaseModel):
     transport_type: str
     metadata: dict
     outcome: OutcomeSummaryResponse | None = None
+    explanations: list[ExplainabilityItemResponse] = Field(default_factory=list)
     events: list[ReplayEventResponse]
 
 
@@ -63,6 +75,7 @@ def _to_response(replay: SessionReplay) -> SessionReplayResponse:
         transport_type=replay.transport_type,
         metadata=replay.metadata,
         outcome=_outcome_response(replay.outcome) if replay.outcome else None,
+        explanations=[_explanation_response(item) for item in replay.explanations],
         events=[_event_response(event) for event in replay.events],
     )
 
@@ -74,6 +87,14 @@ def _outcome_response(outcome: SessionOutcomeSummary) -> OutcomeSummaryResponse:
         escalation=outcome.escalation,
         resolution_time_seconds=outcome.resolution_time_seconds,
         recorded_at=_iso(outcome.recorded_at),
+    )
+
+
+def _explanation_response(item: ExplainabilityItem) -> ExplainabilityItemResponse:
+    return ExplainabilityItemResponse(
+        kind=item.kind,
+        decision=item.decision,
+        reason=item.reason,
     )
 
 
