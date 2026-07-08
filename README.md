@@ -34,7 +34,7 @@ VoxForge is a modular monolith built with Clean Architecture principles:
 - **Memory** — Semantic retrieval, summarization, and context compression (pgvector)
 - **MCP Tool Router** — Builtin tools + MCP server integration for agent executor
 - **Evaluation Engine** — Per-turn latency, quality, tool, and cost scoring
-- **Dashboard** — Web UI + analytics API for sessions, latency, evaluations, activity
+- **Dashboard** — Web UI + analytics API for sessions, latency, evaluations, activity, outcomes
 - **Voice Gateway** — WebSocket transport for real-time audio streaming
 - **Session Manager** — Voice session lifecycle and reconnect support
 - **STT Module** — Streaming speech recognition (Deepgram)
@@ -42,6 +42,8 @@ VoxForge is a modular monolith built with Clean Architecture principles:
 - **TTS Module** — Streaming text-to-speech (Cartesia)
 
 See [docs/architecture/voice-pipeline.md](docs/architecture/voice-pipeline.md) for details.
+
+Pilot value checklist: [docs/product/prove-value-in-1-day.md](docs/product/prove-value-in-1-day.md).
 
 ## Development
 

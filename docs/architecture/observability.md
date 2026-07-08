@@ -22,6 +22,8 @@ Key panels in the bundled Grafana dashboard:
 - Turns completed vs interrupted
 - Evaluation score distribution
 - Tool call rate by tool name
+- Outcome KPI writes by intent/success/escalation
+- Onboarding funnel step completions
 
 ## Quick start
 

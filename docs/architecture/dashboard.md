@@ -31,6 +31,7 @@ Static assets live in `dashboard/` at the project root.
 | GET | `/api/v1/dashboard/latency` | Latency breakdown by metric |
 | GET | `/api/v1/dashboard/evaluations` | Evaluation pass/warn/fail summary |
 | GET | `/api/v1/dashboard/activity` | Recent sessions, tools, evaluations |
+| GET | `/api/v1/dashboard/outcomes` | Task success / escalation / resolution KPIs (+ trend) |
 
 All endpoints require JWT with `sessions:read` scope.
 
@@ -39,5 +40,6 @@ All endpoints require JWT with `sessions:read` scope.
 Aggregates from existing tables:
 - `voice_sessions`, `messages`, `session_metrics`
 - `tool_calls`, `evaluation_runs`, `evaluation_metrics`
+- `outcome_kpis`
 
-No additional migrations required.
+See also [outcomes.md](outcomes.md) for the write path and trend window behavior.
