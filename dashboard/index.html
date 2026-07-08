@@ -17,6 +17,7 @@
         <a href="#overview" class="nav-link active" data-section="overview">Overview</a>
         <a href="#onboarding" class="nav-link" data-section="onboarding">Onboarding</a>
         <a href="#sessions" class="nav-link" data-section="sessions">Sessions</a>
+        <a href="#replay" class="nav-link" data-section="replay">Replay</a>
         <a href="#latency" class="nav-link" data-section="latency">Latency</a>
         <a href="#evaluations" class="nav-link" data-section="evaluations">Evaluations</a>
         <a href="#activity" class="nav-link" data-section="activity">Activity</a>
@@ -81,11 +82,25 @@
                   <th>Avg E2E</th>
                   <th>Eval Score</th>
                   <th>Started</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody id="sessions-body"></tbody>
             </table>
           </div>
+        </div>
+      </section>
+
+      <section id="replay" class="section hidden">
+        <div class="panel">
+          <h2>Conversation Replay</h2>
+          <p>Inspect messages, tool calls, evaluations, metrics, and outcome decisions for one session.</p>
+          <div class="button-row replay-controls">
+            <input id="replay-session-input" type="text" placeholder="Session UUID" />
+            <button id="replay-load-btn" type="button">Load Replay</button>
+          </div>
+          <div id="replay-outcome" class="card-sub">No replay loaded yet.</div>
+          <ul id="replay-timeline" class="replay-timeline"></ul>
         </div>
       </section>
 

@@ -18,9 +18,11 @@ Open **http://localhost:8000/dashboard** after starting the server.
 
 1. Register/login via `/api/v1/auth/register` or `/api/v1/auth/login`
 2. Paste the JWT access token into the dashboard connect bar
-3. View overview, sessions, latency, evaluations, and activity
+3. View overview, sessions, replay, latency, evaluations, and activity
 
 Static assets live in `dashboard/` at the project root.
+
+Conversation replay details: [replay.md](replay.md).
 
 ## API Endpoints
 

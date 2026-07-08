@@ -22,6 +22,10 @@ const els = {
   onboardingStatusBtn: document.getElementById("onboarding-status-btn"),
   onboardingStatus: document.getElementById("onboarding-status"),
   onboardingJson: document.getElementById("onboarding-json"),
+  replaySessionInput: document.getElementById("replay-session-input"),
+  replayLoadBtn: document.getElementById("replay-load-btn"),
+  replayOutcome: document.getElementById("replay-outcome"),
+  replayTimeline: document.getElementById("replay-timeline"),
 };
 
 els.tokenInput.value = token;
@@ -141,8 +145,87 @@ async function loadSessions() {
       <td>${fmtMs(s.avg_e2e_ms)}</td>
       <td>${fmtScore(s.last_evaluation_score)}</td>
       <td>${fmtDate(s.started_at)}</td>
+      <td><button type="button" class="link-btn" data-replay-id="${s.id}">Replay</button></td>
     </tr>
-  `).join("") || "<tr><td colspan='6'>No sessions yet</td></tr>";
+  `).join("") || "<tr><td colspan='7'>No sessions yet</td></tr>";
+
+  els.sessionsBody.querySelectorAll("[data-replay-id]").forEach((btn) => {
+    btn.addEventListener("click", () => openReplay(btn.dataset.replayId));
+  });
+}
+
+function showSection(section) {
+  document.querySelectorAll(".nav-link").forEach((link) => {
+    link.classList.toggle("active", link.dataset.section === section);
+  });
+  document.querySelectorAll(".section").forEach((node) => node.classList.add("hidden"));
+  const target = document.getElementById(section);
+  if (target) target.classList.remove("hidden");
+  const activeLink = document.querySelector(`.nav-link[data-section="${section}"]`);
+  els.pageTitle.textContent = activeLink ? activeLink.textContent : section;
+}
+
+async function openReplay(sessionId) {
+  if (!sessionId) return;
+  els.replaySessionInput.value = sessionId;
+  showSection("replay");
+  await loadReplay(sessionId);
+}
+
+async function loadReplay(sessionId) {
+  const id = (sessionId || els.replaySessionInput.value || "").trim();
+  if (!id) {
+    throw new Error("Enter a session UUID to load replay");
+  }
+  const res = await fetch(`/api/v1/sessions/${id}/replay`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(`${res.status}: ${msg}`);
+  }
+  const replay = await res.json();
+  renderReplay(replay);
+}
+
+function renderReplay(replay) {
+  if (!els.replayOutcome || !els.replayTimeline) return;
+
+  if (replay.outcome) {
+    els.replayOutcome.textContent = [
+      `Session ${shortId(replay.session_id)} (${replay.status})`,
+      `intent=${replay.outcome.intent}`,
+      `success=${replay.outcome.task_success}`,
+      `escalation=${replay.outcome.escalation}`,
+      `resolution=${Math.round(replay.outcome.resolution_time_seconds)}s`,
+    ].join(" · ");
+  } else {
+    els.replayOutcome.textContent = `Session ${shortId(replay.session_id)} (${replay.status}) · no outcome recorded`;
+  }
+
+  const events = replay.events || [];
+  els.replayTimeline.innerHTML = events.map((event) => {
+    const role = event.role ? ` · ${event.role}` : "";
+    const status = event.status ? ` · ${event.status}` : "";
+    return `
+      <li class="replay-event ${event.event_type}">
+        <div class="replay-event-header">
+          <span class="replay-event-type">${event.event_type}</span>
+          <span class="replay-event-meta">${fmtDate(event.timestamp)}${role}${status}</span>
+        </div>
+        <div class="replay-event-summary">${escapeHtml(event.summary || "")}</div>
+      </li>
+    `;
+  }).join("") || "<li class='card-sub'>No timeline events for this session.</li>";
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 async function loadLatency() {
@@ -299,15 +382,19 @@ els.onboardingStatusBtn?.addEventListener("click", async () => {
   }
 });
 
+els.replayLoadBtn?.addEventListener("click", async () => {
+  try {
+    clearError();
+    await loadReplay();
+  } catch (err) {
+    showError(err.message);
+  }
+});
+
 document.querySelectorAll(".nav-link").forEach((link) => {
   link.addEventListener("click", (e) => {
     e.preventDefault();
-    const section = link.dataset.section;
-    document.querySelectorAll(".nav-link").forEach((l) => l.classList.remove("active"));
-    link.classList.add("active");
-    document.querySelectorAll(".section").forEach((s) => s.classList.add("hidden"));
-    document.getElementById(section).classList.remove("hidden");
-    els.pageTitle.textContent = link.textContent;
+    showSection(link.dataset.section);
   });
 });
 
