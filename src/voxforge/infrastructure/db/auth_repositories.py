@@ -255,3 +255,13 @@ class AuditLogRepository:
             metadata_=metadata or {},
         )
         self._session.add(model)
+
+    async def list_for_org(self, org_id: UUID, *, limit: int = 500) -> list[AuditLogModel]:
+        stmt = (
+            select(AuditLogModel)
+            .where(AuditLogModel.org_id == org_id)
+            .order_by(AuditLogModel.created_at.desc())
+            .limit(limit)
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())

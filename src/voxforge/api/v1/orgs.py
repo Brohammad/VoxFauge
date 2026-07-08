@@ -1,6 +1,10 @@
+import csv
+import io
+import json
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,6 +47,17 @@ class MemberResponse(BaseModel):
     org_id: UUID
     user_id: UUID
     role: str
+    created_at: str
+
+
+class AuditLogResponse(BaseModel):
+    id: str
+    org_id: str | None
+    user_id: str | None
+    action: str
+    resource_type: str
+    resource_id: str | None
+    metadata: dict
     created_at: str
 
 
@@ -130,3 +145,61 @@ async def add_member(
         role=member.role.value,
         created_at=member.created_at.isoformat(),
     )
+
+
+@router.get("/{org_id}/audit-logs", response_model=list[AuditLogResponse])
+async def list_audit_logs(
+    org_id: UUID,
+    limit: int = Query(500, ge=1, le=2000),
+    principal: Principal = Depends(get_current_principal),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> list[AuditLogResponse]:
+    try:
+        records = await auth_service.list_audit_logs(org_id, principal, limit=limit)
+    except ForbiddenError as exc:
+        raise HTTPException(status_code=403, detail=exc.message) from exc
+    return [AuditLogResponse(**record) for record in records]
+
+
+@router.get("/{org_id}/audit-logs/export")
+async def export_audit_logs(
+    org_id: UUID,
+    format: str = Query("csv", pattern="^(csv|json)$"),
+    limit: int = Query(500, ge=1, le=2000),
+    principal: Principal = Depends(get_current_principal),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> Response:
+    try:
+        records = await auth_service.list_audit_logs(org_id, principal, limit=limit)
+    except ForbiddenError as exc:
+        raise HTTPException(status_code=403, detail=exc.message) from exc
+
+    if format == "json":
+        return Response(
+            content=json.dumps(records),
+            media_type="application/json",
+        )
+
+    buffer = io.StringIO()
+    writer = csv.DictWriter(
+        buffer,
+        fieldnames=[
+            "id",
+            "org_id",
+            "user_id",
+            "action",
+            "resource_type",
+            "resource_id",
+            "metadata",
+            "created_at",
+        ],
+    )
+    writer.writeheader()
+    for row in records:
+        writer.writerow(
+            {
+                **row,
+                "metadata": str(row.get("metadata", {})),
+            }
+        )
+    return Response(content=buffer.getvalue(), media_type="text/csv")

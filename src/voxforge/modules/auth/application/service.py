@@ -213,6 +213,25 @@ class AuthService:
         )
         return revoked
 
+    async def list_audit_logs(
+        self, org_id: UUID, actor: Principal, *, limit: int = 500
+    ) -> list[dict]:
+        self._require_scope(actor, "orgs:read", org_id)
+        records = await self._audit.list_for_org(org_id, limit=limit)
+        return [
+            {
+                "id": str(record.id),
+                "org_id": str(record.org_id) if record.org_id else None,
+                "user_id": str(record.user_id) if record.user_id else None,
+                "action": record.action,
+                "resource_type": record.resource_type,
+                "resource_id": record.resource_id,
+                "metadata": record.metadata_ or {},
+                "created_at": record.created_at.isoformat(),
+            }
+            for record in records
+        ]
+
     async def commit(self) -> None:
         await self._db.commit()
 
