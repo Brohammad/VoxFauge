@@ -22,6 +22,8 @@ const els = {
   onboardingStatusBtn: document.getElementById("onboarding-status-btn"),
   onboardingStatus: document.getElementById("onboarding-status"),
   onboardingJson: document.getElementById("onboarding-json"),
+  alertsSummary: document.getElementById("alerts-summary"),
+  alertsList: document.getElementById("alerts-list"),
   replaySessionInput: document.getElementById("replay-session-input"),
   replayLoadBtn: document.getElementById("replay-load-btn"),
   replayOutcome: document.getElementById("replay-outcome"),
@@ -284,6 +286,39 @@ async function loadActivity() {
   `).join("") || "<li>No recent activity</li>";
 }
 
+async function loadAlerts() {
+  const summary = await api(`/alerts?days=${trendDays}`);
+  if (els.alertsSummary) {
+    els.alertsSummary.innerHTML = [
+      { label: "Active", value: summary.active_count },
+      { label: "Critical", value: summary.critical_count },
+      { label: "Warning", value: summary.warning_count },
+    ].map((item) => `
+      <div class="eval-stat">
+        <div class="value">${item.value}</div>
+        <div class="label">${item.label}</div>
+      </div>
+    `).join("");
+  }
+  if (els.alertsList) {
+    const alerts = summary.alerts || [];
+    els.alertsList.innerHTML = alerts.length
+      ? alerts.map((alert) => `
+          <li class="alert-item ${escapeHtml(alert.severity)}">
+            <div class="alert-header">
+              <span class="alert-severity">${escapeHtml(alert.severity)}</span>
+              <span class="alert-code">${escapeHtml(alert.code)}</span>
+            </div>
+            <div class="alert-message">${escapeHtml(alert.message)}</div>
+            <div class="alert-meta">
+              ${escapeHtml(alert.metric)}: ${alert.observed} vs ${alert.threshold}
+            </div>
+          </li>
+        `).join("")
+      : "<li class='card-sub'>No active regression alerts.</li>";
+  }
+}
+
 function renderOnboardingStatus(run) {
   if (!run) {
     els.onboardingStatus.textContent = "No onboarding run yet.";
@@ -332,6 +367,7 @@ async function refreshAll() {
       loadLatency(),
       loadEvaluations(),
       loadActivity(),
+      loadAlerts(),
     ]);
     setConnected(true);
   } catch (err) {

@@ -34,6 +34,7 @@ Conversation replay details: [replay.md](replay.md).
 | GET | `/api/v1/dashboard/evaluations` | Evaluation pass/warn/fail summary |
 | GET | `/api/v1/dashboard/activity` | Recent sessions, tools, evaluations |
 | GET | `/api/v1/dashboard/outcomes` | Task success / escalation / resolution KPIs (+ trend) |
+| GET | `/api/v1/dashboard/alerts` | Active regression alerts vs template thresholds |
 
 All endpoints require JWT with `sessions:read` scope.
 

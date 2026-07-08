@@ -16,6 +16,7 @@
       <nav>
         <a href="#overview" class="nav-link active" data-section="overview">Overview</a>
         <a href="#onboarding" class="nav-link" data-section="onboarding">Onboarding</a>
+        <a href="#alerts" class="nav-link" data-section="alerts">Alerts</a>
         <a href="#sessions" class="nav-link" data-section="sessions">Sessions</a>
         <a href="#replay" class="nav-link" data-section="replay">Replay</a>
         <a href="#latency" class="nav-link" data-section="latency">Latency</a>
@@ -66,6 +67,15 @@
           </div>
           <div id="onboarding-status" class="card-sub">No onboarding run yet.</div>
           <pre id="onboarding-json" class="json-preview"></pre>
+        </div>
+      </section>
+
+      <section id="alerts" class="section hidden">
+        <div class="panel">
+          <h2>Regression Alerts</h2>
+          <p>Threshold breaches for quality, latency, escalations, and task success.</p>
+          <div id="alerts-summary" class="eval-grid"></div>
+          <ul id="alerts-list" class="alerts-list"></ul>
         </div>
       </section>
 

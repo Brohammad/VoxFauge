@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
-from voxforge.api.dependencies import get_dashboard_service, require_scope
+from voxforge.api.dependencies import get_alert_service, get_dashboard_service, require_scope
 from voxforge.core.domain.auth import Principal
 from voxforge.core.domain.dashboard import (
     ActivityItem,
@@ -11,6 +11,7 @@ from voxforge.core.domain.dashboard import (
     OutcomeTrendPoint,
     SessionSummaryItem,
 )
+from voxforge.modules.alerts.application.service import AlertService
 from voxforge.modules.dashboard.application.service import DashboardService
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -77,6 +78,31 @@ class OutcomeSummaryResponse(BaseModel):
     avg_resolution_time_seconds: float
     top_intents: list[str]
     trend: list[OutcomeTrendResponse]
+
+
+class AlertItemResponse(BaseModel):
+    code: str
+    severity: str
+    metric: str
+    observed: float
+    threshold: float
+    message: str
+
+
+class AlertThresholdsResponse(BaseModel):
+    task_success_min: float
+    escalation_max: float
+    quality_min: float
+    e2e_latency_max_ms: float
+    failed_evaluation_max_rate: float
+
+
+class AlertSummaryResponse(BaseModel):
+    active_count: int
+    critical_count: int
+    warning_count: int
+    thresholds: AlertThresholdsResponse
+    alerts: list[AlertItemResponse]
 
 
 @router.get("/overview", response_model=OverviewResponse)
@@ -155,6 +181,38 @@ async def dashboard_outcomes(
         avg_resolution_time_seconds=outcome.avg_resolution_time_seconds,
         top_intents=outcome.top_intents,
         trend=[_outcome_trend_response(item) for item in outcome.trend],
+    )
+
+
+@router.get("/alerts", response_model=AlertSummaryResponse)
+async def dashboard_alerts(
+    days: int = Query(7, ge=1, le=90),
+    principal: Principal = Depends(require_scope("sessions:read")),
+    alerts: AlertService = Depends(get_alert_service),
+) -> AlertSummaryResponse:
+    summary = await alerts.get_alerts(principal.org_id, days=days)
+    return AlertSummaryResponse(
+        active_count=summary.active_count,
+        critical_count=summary.critical_count,
+        warning_count=summary.warning_count,
+        thresholds=AlertThresholdsResponse(
+            task_success_min=summary.thresholds.task_success_min,
+            escalation_max=summary.thresholds.escalation_max,
+            quality_min=summary.thresholds.quality_min,
+            e2e_latency_max_ms=summary.thresholds.e2e_latency_max_ms,
+            failed_evaluation_max_rate=summary.thresholds.failed_evaluation_max_rate,
+        ),
+        alerts=[
+            AlertItemResponse(
+                code=item.code,
+                severity=item.severity,
+                metric=item.metric,
+                observed=item.observed,
+                threshold=item.threshold,
+                message=item.message,
+            )
+            for item in summary.alerts
+        ],
     )
 
 

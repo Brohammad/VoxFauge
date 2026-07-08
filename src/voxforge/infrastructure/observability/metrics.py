@@ -85,3 +85,8 @@ onboarding_steps_total = Counter(
     "Onboarding funnel step transitions",
     ["step", "status"],
 )
+regression_alerts_total = Counter(
+    "voxforge_regression_alerts_total",
+    "Regression alerts raised by dashboard alert engine",
+    ["code", "severity"],
+)

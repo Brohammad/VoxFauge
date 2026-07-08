@@ -347,6 +347,60 @@ th { color: var(--muted); font-weight: 500; font-size: 0.75rem; text-transform: 
 
 .activity-time { color: var(--muted); font-size: 0.75rem; }
 
+.alerts-list {
+  list-style: none;
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.alert-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  padding: 0.75rem 0.9rem;
+}
+
+.alert-item.critical {
+  border-color: #7f1d1d;
+}
+
+.alert-item.warning {
+  border-color: #854d0e;
+}
+
+.alert-header {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.alert-severity {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--warning);
+}
+
+.alert-item.critical .alert-severity { color: var(--danger); }
+
+.alert-code {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.alert-message {
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.alert-meta {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
 .replay-controls input {
   background: var(--surface2);
   border: 1px solid var(--border);

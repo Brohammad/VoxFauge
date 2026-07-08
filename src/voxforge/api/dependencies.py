@@ -27,6 +27,7 @@ from voxforge.infrastructure.redis.client import get_redis
 from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
 from voxforge.infrastructure.tools.mcp_adapter import MCPToolAdapter
 from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
+from voxforge.modules.alerts.application.service import AlertService
 from voxforge.modules.auth.application.service import AuthService
 from voxforge.modules.dashboard.application.service import DashboardService
 from voxforge.modules.evaluation.application.service import EvaluationEngine
@@ -182,6 +183,12 @@ def get_replay_service(
     db: AsyncSession = Depends(get_db_session),
 ) -> ReplayService:
     return ReplayService(ReplayRepository(db))
+
+
+def get_alert_service(
+    db: AsyncSession = Depends(get_db_session),
+) -> AlertService:
+    return AlertService(db, DashboardRepository(db))
 
 
 def get_response_generator(
