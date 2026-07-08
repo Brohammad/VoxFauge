@@ -26,6 +26,7 @@ from voxforge.infrastructure.providers.llm.openai import OpenAILLMProvider
 from voxforge.infrastructure.redis.client import get_redis
 from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
 from voxforge.infrastructure.tools.mcp_adapter import MCPToolAdapter
+from voxforge.modules.agent_config.application.service import AgentConfigService
 from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
 from voxforge.modules.alerts.application.service import AlertService
 from voxforge.modules.auth.application.service import AuthService
@@ -189,6 +190,12 @@ def get_alert_service(
     db: AsyncSession = Depends(get_db_session),
 ) -> AlertService:
     return AlertService(db, DashboardRepository(db))
+
+
+def get_agent_config_service(
+    db: AsyncSession = Depends(get_db_session),
+) -> AgentConfigService:
+    return AgentConfigService(db)
 
 
 def get_response_generator(
