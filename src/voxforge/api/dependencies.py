@@ -12,6 +12,7 @@ from voxforge.infrastructure.db.dashboard_repository import DashboardRepository
 from voxforge.infrastructure.db.evaluation_repository import EvaluationRepository
 from voxforge.infrastructure.db.memory_repository import MemoryRepository
 from voxforge.infrastructure.db.outcome_repository import OutcomeRepository
+from voxforge.infrastructure.db.replay_repository import ReplayRepository
 from voxforge.infrastructure.db.session import get_db_session
 from voxforge.infrastructure.db.tool_repository import ToolCallRepository
 from voxforge.infrastructure.livekit.token_service import LiveKitTokenService
@@ -34,6 +35,7 @@ from voxforge.modules.mcp_tool_router.application.router import ToolRouter
 from voxforge.modules.memory.application.service import MemoryService
 from voxforge.modules.onboarding.application.service import OnboardingService
 from voxforge.modules.outcomes.application.service import OutcomeExtractionService
+from voxforge.modules.replay.application.service import ReplayService
 from voxforge.modules.session_manager.application.service import SessionManager
 from voxforge.modules.voice_gateway.application.pipeline import VoicePipelineService
 
@@ -174,6 +176,12 @@ def get_outcome_service(
     db: AsyncSession = Depends(get_db_session),
 ) -> OutcomeExtractionService:
     return OutcomeExtractionService(OutcomeRepository(db))
+
+
+def get_replay_service(
+    db: AsyncSession = Depends(get_db_session),
+) -> ReplayService:
+    return ReplayService(ReplayRepository(db))
 
 
 def get_response_generator(
