@@ -62,6 +62,14 @@ class ActivityItemResponse(BaseModel):
     status: str | None
 
 
+class OutcomeSummaryResponse(BaseModel):
+    total_sessions: int
+    task_success_rate: float
+    escalation_rate: float
+    avg_resolution_time_seconds: float
+    top_intents: list[str]
+
+
 @router.get("/overview", response_model=OverviewResponse)
 async def dashboard_overview(
     principal: Principal = Depends(require_scope("sessions:read")),
@@ -122,6 +130,21 @@ async def dashboard_activity(
 ) -> list[ActivityItemResponse]:
     items = await dashboard.get_recent_activity(principal.org_id, limit=limit)
     return [_activity_response(i) for i in items]
+
+
+@router.get("/outcomes", response_model=OutcomeSummaryResponse)
+async def dashboard_outcomes(
+    principal: Principal = Depends(require_scope("sessions:read")),
+    dashboard: DashboardService = Depends(get_dashboard_service),
+) -> OutcomeSummaryResponse:
+    outcome = await dashboard.get_outcome_summary(principal.org_id)
+    return OutcomeSummaryResponse(
+        total_sessions=outcome.total_sessions,
+        task_success_rate=outcome.task_success_rate,
+        escalation_rate=outcome.escalation_rate,
+        avg_resolution_time_seconds=outcome.avg_resolution_time_seconds,
+        top_intents=outcome.top_intents,
+    )
 
 
 def _overview_response(o: DashboardOverview) -> OverviewResponse:

@@ -9,6 +9,7 @@ from voxforge.core.domain.dashboard import (
     DashboardOverview,
     EvaluationSummary,
     LatencyBucket,
+    OutcomeSummary,
     SessionSummaryItem,
 )
 from voxforge.core.domain.evaluation import MetricName
@@ -16,6 +17,7 @@ from voxforge.infrastructure.db.models import (
     EvaluationMetricModel,
     EvaluationRunModel,
     MessageModel,
+    OutcomeKPIModel,
     SessionMetricModel,
     ToolCallModel,
     VoiceSessionModel,
@@ -296,3 +298,65 @@ class DashboardRepository:
 
         items.sort(key=lambda x: x.timestamp, reverse=True)
         return items[:limit]
+
+    async def get_outcome_summary(self, org_id: UUID) -> OutcomeSummary:
+        total = int(
+            (
+                await self._session.execute(
+                    select(func.count())
+                    .select_from(OutcomeKPIModel)
+                    .where(OutcomeKPIModel.org_id == org_id)
+                )
+            ).scalar_one()
+        )
+        if total == 0:
+            return OutcomeSummary()
+
+        success_count = int(
+            (
+                await self._session.execute(
+                    select(func.count())
+                    .select_from(OutcomeKPIModel)
+                    .where(
+                        OutcomeKPIModel.org_id == org_id,
+                        OutcomeKPIModel.task_success.is_(True),
+                    )
+                )
+            ).scalar_one()
+        )
+        escalation_count = int(
+            (
+                await self._session.execute(
+                    select(func.count())
+                    .select_from(OutcomeKPIModel)
+                    .where(
+                        OutcomeKPIModel.org_id == org_id,
+                        OutcomeKPIModel.escalation.is_(True),
+                    )
+                )
+            ).scalar_one()
+        )
+        avg_resolution = (
+            await self._session.execute(
+                select(func.avg(OutcomeKPIModel.resolution_time_seconds)).where(
+                    OutcomeKPIModel.org_id == org_id
+                )
+            )
+        ).scalar_one()
+
+        top_intents_result = await self._session.execute(
+            select(OutcomeKPIModel.intent, func.count().label("intent_count"))
+            .where(OutcomeKPIModel.org_id == org_id)
+            .group_by(OutcomeKPIModel.intent)
+            .order_by(func.count().desc())
+            .limit(3)
+        )
+        top_intents = [row[0] for row in top_intents_result.all()]
+
+        return OutcomeSummary(
+            total_sessions=total,
+            task_success_rate=round(success_count / total, 3),
+            escalation_rate=round(escalation_count / total, 3),
+            avg_resolution_time_seconds=round(float(avg_resolution or 0.0), 2),
+            top_intents=top_intents,
+        )

@@ -151,6 +151,40 @@ nav { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; }
 }
 
 .panel h2 { font-size: 1rem; margin-bottom: 1rem; color: var(--muted); }
+.panel p { margin-bottom: 0.75rem; color: var(--muted); font-size: 0.9rem; }
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.button-row button {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.button-row button:hover {
+  border-color: var(--accent2);
+}
+
+.json-preview {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: #bfdbfe;
+  max-height: 220px;
+  overflow: auto;
+  font-size: 0.78rem;
+}
 
 .table-wrap { overflow-x: auto; }
 

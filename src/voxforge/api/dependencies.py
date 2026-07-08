@@ -31,6 +31,7 @@ from voxforge.modules.evaluation.application.service import EvaluationEngine
 from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
 from voxforge.modules.mcp_tool_router.application.router import ToolRouter
 from voxforge.modules.memory.application.service import MemoryService
+from voxforge.modules.onboarding.application.service import OnboardingService
 from voxforge.modules.session_manager.application.service import SessionManager
 from voxforge.modules.voice_gateway.application.pipeline import VoicePipelineService
 
@@ -159,6 +160,12 @@ def get_dashboard_service(
     db: AsyncSession = Depends(get_db_session),
 ) -> DashboardService:
     return DashboardService(DashboardRepository(db))
+
+
+def get_onboarding_service(
+    db: AsyncSession = Depends(get_db_session),
+) -> OnboardingService:
+    return OnboardingService(db)
 
 
 def get_response_generator(

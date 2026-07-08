@@ -49,3 +49,11 @@ class ActivityItem(BaseModel):
     session_id: UUID | None = None
     summary: str
     status: str | None = None
+
+
+class OutcomeSummary(BaseModel):
+    total_sessions: int = 0
+    task_success_rate: float = 0.0
+    escalation_rate: float = 0.0
+    avg_resolution_time_seconds: float = 0.0
+    top_intents: list[str] = Field(default_factory=list)

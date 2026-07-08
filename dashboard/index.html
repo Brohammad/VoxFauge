@@ -15,6 +15,7 @@
       </div>
       <nav>
         <a href="#overview" class="nav-link active" data-section="overview">Overview</a>
+        <a href="#onboarding" class="nav-link" data-section="onboarding">Onboarding</a>
         <a href="#sessions" class="nav-link" data-section="sessions">Sessions</a>
         <a href="#latency" class="nav-link" data-section="latency">Latency</a>
         <a href="#evaluations" class="nav-link" data-section="evaluations">Evaluations</a>
@@ -40,6 +41,21 @@
 
       <section id="overview" class="section">
         <div class="cards" id="overview-cards"></div>
+      </section>
+
+      <section id="onboarding" class="section hidden">
+        <div class="panel">
+          <h2>Outcome-first Onboarding</h2>
+          <p>Complete: register account -> connect token -> run sample call -> verify KPI outcomes.</p>
+          <div class="button-row">
+            <button id="onboarding-start-btn" type="button">1. Start</button>
+            <button id="onboarding-connect-btn" type="button">2. Connect Token</button>
+            <button id="onboarding-sample-btn" type="button">3. Run Sample Call</button>
+            <button id="onboarding-status-btn" type="button">Refresh Status</button>
+          </div>
+          <div id="onboarding-status" class="card-sub">No onboarding run yet.</div>
+          <pre id="onboarding-json" class="json-preview"></pre>
+        </div>
       </section>
 
       <section id="sessions" class="section hidden">

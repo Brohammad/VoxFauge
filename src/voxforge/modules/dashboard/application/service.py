@@ -5,6 +5,7 @@ from voxforge.core.domain.dashboard import (
     DashboardOverview,
     EvaluationSummary,
     LatencyBucket,
+    OutcomeSummary,
     SessionSummaryItem,
 )
 from voxforge.infrastructure.db.dashboard_repository import DashboardRepository
@@ -32,3 +33,6 @@ class DashboardService:
         self, org_id: UUID, *, limit: int = 30
     ) -> list[ActivityItem]:
         return await self._repo.get_recent_activity(org_id, limit=limit)
+
+    async def get_outcome_summary(self, org_id: UUID) -> OutcomeSummary:
+        return await self._repo.get_outcome_summary(org_id)

@@ -18,6 +18,7 @@ async def test_dashboard_overview(db_session):
         EvaluationRunModel,
         MessageModel,
         OrganizationModel,
+        OutcomeKPIModel,
         SessionMetricModel,
         VoiceSessionModel,
     )
@@ -59,6 +60,16 @@ async def test_dashboard_overview(db_session):
             status="passed",
         )
     )
+    db_session.add(
+        OutcomeKPIModel(
+            org_id=org_id,
+            session_id=session_id,
+            intent="billing_contact_change",
+            task_success=True,
+            escalation=False,
+            resolution_time_seconds=95.0,
+        )
+    )
     await db_session.flush()
 
     service = DashboardService(DashboardRepository(db_session))
@@ -79,3 +90,8 @@ async def test_dashboard_overview(db_session):
     eval_summary = await service.get_evaluation_summary(org_id)
     assert eval_summary.total_runs == 1
     assert eval_summary.passed == 1
+
+    outcomes = await service.get_outcome_summary(org_id)
+    assert outcomes.total_sessions == 1
+    assert outcomes.task_success_rate == 1.0
+    assert outcomes.escalation_rate == 0.0

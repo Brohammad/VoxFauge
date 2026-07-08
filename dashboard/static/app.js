@@ -13,6 +13,12 @@ const els = {
   evalMetrics: document.getElementById("eval-metrics"),
   activityList: document.getElementById("activity-list"),
   pageTitle: document.getElementById("page-title"),
+  onboardingStartBtn: document.getElementById("onboarding-start-btn"),
+  onboardingConnectBtn: document.getElementById("onboarding-connect-btn"),
+  onboardingSampleBtn: document.getElementById("onboarding-sample-btn"),
+  onboardingStatusBtn: document.getElementById("onboarding-status-btn"),
+  onboardingStatus: document.getElementById("onboarding-status"),
+  onboardingJson: document.getElementById("onboarding-json"),
 };
 
 els.tokenInput.value = token;
@@ -63,12 +69,16 @@ function fmtDate(iso) {
   return new Date(iso).toLocaleString();
 }
 
+function fmtPct(v) {
+  return `${Math.round((v || 0) * 100)}%`;
+}
+
 function shortId(id) {
   return id ? id.slice(0, 8) + "…" : "—";
 }
 
 async function loadOverview() {
-  const d = await api("/overview");
+  const [d, outcomes] = await Promise.all([api("/overview"), api("/outcomes")]);
   els.overviewCards.innerHTML = [
     card("Total Sessions", d.total_sessions, `${d.active_sessions} active`),
     card("Messages", d.total_messages),
@@ -77,6 +87,9 @@ async function loadOverview() {
     card("Avg E2E Latency", fmtMs(d.avg_e2e_latency_ms)),
     card("Avg Eval Score", fmtScore(d.avg_evaluation_score)),
     card("Est. Total Cost", fmtCost(d.estimated_total_cost_usd)),
+    card("Task Success Rate", fmtPct(outcomes.task_success_rate)),
+    card("Escalation Rate", fmtPct(outcomes.escalation_rate)),
+    card("Avg Resolution Time", `${Math.round(outcomes.avg_resolution_time_seconds || 0)}s`),
   ].join("");
 }
 
@@ -136,6 +149,44 @@ async function loadActivity() {
   `).join("") || "<li>No recent activity</li>";
 }
 
+function renderOnboardingStatus(run) {
+  if (!run) {
+    els.onboardingStatus.textContent = "No onboarding run yet.";
+    els.onboardingJson.textContent = "";
+    return;
+  }
+  els.onboardingStatus.textContent = `Status: ${run.status}`;
+  els.onboardingJson.textContent = JSON.stringify(run, null, 2);
+}
+
+async function callOnboarding(path, body) {
+  const res = await fetch(`/api/v1/onboarding${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(`${res.status}: ${msg}`);
+  }
+  return res.json();
+}
+
+async function loadOnboardingStatus() {
+  const res = await fetch("/api/v1/onboarding/status", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(`${res.status}: ${msg}`);
+  }
+  const run = await res.json();
+  renderOnboardingStatus(run);
+}
+
 async function refreshAll() {
   if (!token) return;
   clearError();
@@ -160,6 +211,43 @@ els.connectBtn.addEventListener("click", () => {
   refreshAll();
 });
 
+els.onboardingStartBtn?.addEventListener("click", async () => {
+  try {
+    const run = await callOnboarding("/start");
+    renderOnboardingStatus(run);
+    await refreshAll();
+  } catch (err) {
+    showError(err.message);
+  }
+});
+
+els.onboardingConnectBtn?.addEventListener("click", async () => {
+  try {
+    const run = await callOnboarding("/connect-token", { token_preview: token.slice(0, 8) });
+    renderOnboardingStatus(run);
+  } catch (err) {
+    showError(err.message);
+  }
+});
+
+els.onboardingSampleBtn?.addEventListener("click", async () => {
+  try {
+    const run = await callOnboarding("/run-sample-call");
+    renderOnboardingStatus(run);
+    await refreshAll();
+  } catch (err) {
+    showError(err.message);
+  }
+});
+
+els.onboardingStatusBtn?.addEventListener("click", async () => {
+  try {
+    await loadOnboardingStatus();
+  } catch (err) {
+    showError(err.message);
+  }
+});
+
 document.querySelectorAll(".nav-link").forEach((link) => {
   link.addEventListener("click", (e) => {
     e.preventDefault();
@@ -172,6 +260,9 @@ document.querySelectorAll(".nav-link").forEach((link) => {
   });
 });
 
-if (token) refreshAll();
+if (token) {
+  refreshAll();
+  loadOnboardingStatus().catch(() => {});
+}
 
 setInterval(() => { if (token) refreshAll(); }, 30000);
