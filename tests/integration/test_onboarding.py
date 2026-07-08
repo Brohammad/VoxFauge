@@ -53,3 +53,9 @@ async def test_onboarding_and_template_endpoints(auth_client):
     assert outcomes["escalation_rate"] == 0.0
     assert "billing_contact_change" in outcomes["top_intents"]
     assert len(outcomes["trend"]) == 1
+
+    outcomes_30d_resp = await auth_client.get(
+        "/api/v1/dashboard/outcomes?days=30", headers=headers
+    )
+    assert outcomes_30d_resp.status_code == 200
+    assert len(outcomes_30d_resp.json()["trend"]) == 1

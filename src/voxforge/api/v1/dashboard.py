@@ -143,10 +143,11 @@ async def dashboard_activity(
 
 @router.get("/outcomes", response_model=OutcomeSummaryResponse)
 async def dashboard_outcomes(
+    days: int = Query(7, ge=1, le=90),
     principal: Principal = Depends(require_scope("sessions:read")),
     dashboard: DashboardService = Depends(get_dashboard_service),
 ) -> OutcomeSummaryResponse:
-    outcome = await dashboard.get_outcome_summary(principal.org_id)
+    outcome = await dashboard.get_outcome_summary(principal.org_id, days=days)
     return OutcomeSummaryResponse(
         total_sessions=outcome.total_sessions,
         task_success_rate=outcome.task_success_rate,

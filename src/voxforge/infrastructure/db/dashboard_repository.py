@@ -300,7 +300,7 @@ class DashboardRepository:
         items.sort(key=lambda x: x.timestamp, reverse=True)
         return items[:limit]
 
-    async def get_outcome_summary(self, org_id: UUID) -> OutcomeSummary:
+    async def get_outcome_summary(self, org_id: UUID, *, days: int = 7) -> OutcomeSummary:
         total = int(
             (
                 await self._session.execute(
@@ -353,7 +353,7 @@ class DashboardRepository:
             .limit(3)
         )
         top_intents = [row[0] for row in top_intents_result.all()]
-        trend = await self._get_outcome_trend(org_id)
+        trend = await self._get_outcome_trend(org_id, days=days)
 
         return OutcomeSummary(
             total_sessions=total,

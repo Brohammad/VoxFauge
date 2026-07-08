@@ -42,7 +42,13 @@
       <section id="overview" class="section">
         <div class="cards" id="overview-cards"></div>
         <div class="panel trend-panel">
-          <h2>Outcome Trends (7d)</h2>
+          <div class="panel-header">
+            <h2 id="outcomes-trend-title">Outcome Trends (7d)</h2>
+            <div class="trend-toggle" role="group" aria-label="Trend window">
+              <button id="trend-days-7" type="button" class="toggle-btn active" data-days="7">7d</button>
+              <button id="trend-days-30" type="button" class="toggle-btn" data-days="30">30d</button>
+            </div>
+          </div>
           <div id="outcomes-trend-chart" class="metric-bars"></div>
         </div>
       </section>

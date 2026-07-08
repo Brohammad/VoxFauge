@@ -1,5 +1,6 @@
 const API = "/api/v1/dashboard";
 let token = localStorage.getItem("voxforge_token") || "";
+let trendDays = Number(localStorage.getItem("voxforge_trend_days") || 7);
 
 const els = {
   tokenInput: document.getElementById("token-input"),
@@ -12,6 +13,7 @@ const els = {
   evalSummary: document.getElementById("eval-summary"),
   evalMetrics: document.getElementById("eval-metrics"),
   outcomesTrendChart: document.getElementById("outcomes-trend-chart"),
+  outcomesTrendTitle: document.getElementById("outcomes-trend-title"),
   activityList: document.getElementById("activity-list"),
   pageTitle: document.getElementById("page-title"),
   onboardingStartBtn: document.getElementById("onboarding-start-btn"),
@@ -78,8 +80,22 @@ function shortId(id) {
   return id ? id.slice(0, 8) + "…" : "—";
 }
 
+function setTrendDays(days) {
+  trendDays = days === 30 ? 30 : 7;
+  localStorage.setItem("voxforge_trend_days", String(trendDays));
+  document.querySelectorAll(".toggle-btn").forEach((btn) => {
+    btn.classList.toggle("active", Number(btn.dataset.days) === trendDays);
+  });
+  if (els.outcomesTrendTitle) {
+    els.outcomesTrendTitle.textContent = `Outcome Trends (${trendDays}d)`;
+  }
+}
+
 async function loadOverview() {
-  const [d, outcomes] = await Promise.all([api("/overview"), api("/outcomes")]);
+  const [d, outcomes] = await Promise.all([
+    api("/overview"),
+    api(`/outcomes?days=${trendDays}`),
+  ]);
   els.overviewCards.innerHTML = [
     card("Total Sessions", d.total_sessions, `${d.active_sessions} active`),
     card("Messages", d.total_messages),
@@ -233,6 +249,19 @@ els.connectBtn.addEventListener("click", () => {
   refreshAll();
 });
 
+document.querySelectorAll(".toggle-btn").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    setTrendDays(Number(btn.dataset.days));
+    if (!token) return;
+    try {
+      clearError();
+      await loadOverview();
+    } catch (err) {
+      showError(err.message);
+    }
+  });
+});
+
 els.onboardingStartBtn?.addEventListener("click", async () => {
   try {
     const run = await callOnboarding("/start");
@@ -281,6 +310,8 @@ document.querySelectorAll(".nav-link").forEach((link) => {
     els.pageTitle.textContent = link.textContent;
   });
 });
+
+setTrendDays(trendDays);
 
 if (token) {
   refreshAll();

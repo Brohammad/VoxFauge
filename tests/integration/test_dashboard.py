@@ -97,3 +97,7 @@ async def test_dashboard_overview(db_session):
     assert outcomes.escalation_rate == 0.0
     assert len(outcomes.trend) == 1
     assert outcomes.trend[0].total_sessions == 1
+
+    outcomes_30d = await service.get_outcome_summary(org_id, days=30)
+    assert len(outcomes_30d.trend) == 1
+    assert outcomes_30d.trend[0].total_sessions == 1
