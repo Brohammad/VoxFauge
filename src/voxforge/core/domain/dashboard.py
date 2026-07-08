@@ -51,9 +51,17 @@ class ActivityItem(BaseModel):
     status: str | None = None
 
 
+class OutcomeTrendPoint(BaseModel):
+    day: str
+    total_sessions: int
+    task_success_rate: float
+    escalation_rate: float
+
+
 class OutcomeSummary(BaseModel):
     total_sessions: int = 0
     task_success_rate: float = 0.0
     escalation_rate: float = 0.0
     avg_resolution_time_seconds: float = 0.0
     top_intents: list[str] = Field(default_factory=list)
+    trend: list[OutcomeTrendPoint] = Field(default_factory=list)

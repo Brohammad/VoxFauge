@@ -8,6 +8,7 @@ from voxforge.core.domain.auth import Principal
 from voxforge.core.domain.dashboard import (
     ActivityItem,
     DashboardOverview,
+    OutcomeTrendPoint,
     SessionSummaryItem,
 )
 from voxforge.modules.dashboard.application.service import DashboardService
@@ -62,12 +63,20 @@ class ActivityItemResponse(BaseModel):
     status: str | None
 
 
+class OutcomeTrendResponse(BaseModel):
+    day: str
+    total_sessions: int
+    task_success_rate: float
+    escalation_rate: float
+
+
 class OutcomeSummaryResponse(BaseModel):
     total_sessions: int
     task_success_rate: float
     escalation_rate: float
     avg_resolution_time_seconds: float
     top_intents: list[str]
+    trend: list[OutcomeTrendResponse]
 
 
 @router.get("/overview", response_model=OverviewResponse)
@@ -144,6 +153,7 @@ async def dashboard_outcomes(
         escalation_rate=outcome.escalation_rate,
         avg_resolution_time_seconds=outcome.avg_resolution_time_seconds,
         top_intents=outcome.top_intents,
+        trend=[_outcome_trend_response(item) for item in outcome.trend],
     )
 
 
@@ -181,4 +191,13 @@ def _activity_response(i: ActivityItem) -> ActivityItemResponse:
         session_id=i.session_id,
         summary=i.summary,
         status=i.status,
+    )
+
+
+def _outcome_trend_response(item: OutcomeTrendPoint) -> OutcomeTrendResponse:
+    return OutcomeTrendResponse(
+        day=item.day,
+        total_sessions=item.total_sessions,
+        task_success_rate=item.task_success_rate,
+        escalation_rate=item.escalation_rate,
     )

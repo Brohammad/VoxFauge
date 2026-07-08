@@ -95,3 +95,5 @@ async def test_dashboard_overview(db_session):
     assert outcomes.total_sessions == 1
     assert outcomes.task_success_rate == 1.0
     assert outcomes.escalation_rate == 0.0
+    assert len(outcomes.trend) == 1
+    assert outcomes.trend[0].total_sessions == 1

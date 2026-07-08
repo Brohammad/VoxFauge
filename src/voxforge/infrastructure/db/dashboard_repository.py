@@ -10,6 +10,7 @@ from voxforge.core.domain.dashboard import (
     EvaluationSummary,
     LatencyBucket,
     OutcomeSummary,
+    OutcomeTrendPoint,
     SessionSummaryItem,
 )
 from voxforge.core.domain.evaluation import MetricName
@@ -352,6 +353,7 @@ class DashboardRepository:
             .limit(3)
         )
         top_intents = [row[0] for row in top_intents_result.all()]
+        trend = await self._get_outcome_trend(org_id)
 
         return OutcomeSummary(
             total_sessions=total,
@@ -359,4 +361,42 @@ class DashboardRepository:
             escalation_rate=round(escalation_count / total, 3),
             avg_resolution_time_seconds=round(float(avg_resolution or 0.0), 2),
             top_intents=top_intents,
+            trend=trend,
         )
+
+    async def _get_outcome_trend(
+        self, org_id: UUID, *, days: int = 7
+    ) -> list[OutcomeTrendPoint]:
+        since = datetime.now(UTC) - timedelta(days=days)
+        result = await self._session.execute(
+            select(
+                OutcomeKPIModel.recorded_at,
+                OutcomeKPIModel.task_success,
+                OutcomeKPIModel.escalation,
+            )
+            .where(
+                OutcomeKPIModel.org_id == org_id,
+                OutcomeKPIModel.recorded_at >= since,
+            )
+            .order_by(OutcomeKPIModel.recorded_at.asc())
+        )
+
+        buckets: dict[str, dict[str, int]] = {}
+        for recorded_at, task_success, escalation in result.all():
+            day = recorded_at.date().isoformat()
+            bucket = buckets.setdefault(day, {"total": 0, "success": 0, "escalation": 0})
+            bucket["total"] += 1
+            if task_success:
+                bucket["success"] += 1
+            if escalation:
+                bucket["escalation"] += 1
+
+        return [
+            OutcomeTrendPoint(
+                day=day,
+                total_sessions=values["total"],
+                task_success_rate=round(values["success"] / values["total"], 3),
+                escalation_rate=round(values["escalation"] / values["total"], 3),
+            )
+            for day, values in sorted(buckets.items(), key=lambda item: item[0])
+        ]
