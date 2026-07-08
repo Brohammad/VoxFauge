@@ -125,6 +125,7 @@ nav { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; }
 .hidden { display: none !important; }
 
 .section { padding: 1.5rem 2rem; }
+.trend-panel { margin-top: 1rem; }
 
 .cards {
   display: grid;
@@ -250,6 +251,33 @@ th { color: var(--muted); font-weight: 500; font-size: 0.75rem; text-transform: 
 .eval-stat .label { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
 
 .metric-bars { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.trend-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.trend-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend-values {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.trend-pill {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  background: var(--surface2);
+}
 
 .activity-list { list-style: none; }
 

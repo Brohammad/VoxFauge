@@ -11,6 +11,7 @@ const els = {
   latencyChart: document.getElementById("latency-chart"),
   evalSummary: document.getElementById("eval-summary"),
   evalMetrics: document.getElementById("eval-metrics"),
+  outcomesTrendChart: document.getElementById("outcomes-trend-chart"),
   activityList: document.getElementById("activity-list"),
   pageTitle: document.getElementById("page-title"),
   onboardingStartBtn: document.getElementById("onboarding-start-btn"),
@@ -91,6 +92,27 @@ async function loadOverview() {
     card("Escalation Rate", fmtPct(outcomes.escalation_rate)),
     card("Avg Resolution Time", `${Math.round(outcomes.avg_resolution_time_seconds || 0)}s`),
   ].join("");
+  renderOutcomeTrend(outcomes.trend || []);
+}
+
+function renderOutcomeTrend(trendPoints) {
+  if (!els.outcomesTrendChart) return;
+  if (!trendPoints.length) {
+    els.outcomesTrendChart.innerHTML = "<p>No outcome trend data yet</p>";
+    return;
+  }
+
+  const points = [...trendPoints].sort((a, b) => a.day.localeCompare(b.day));
+  els.outcomesTrendChart.innerHTML = points.map((point) => `
+    <div class="trend-row">
+      <div class="trend-label">${point.day}</div>
+      <div class="trend-values">
+        <span class="trend-pill">Sessions: ${point.total_sessions}</span>
+        <span class="trend-pill">Success: ${fmtPct(point.task_success_rate)}</span>
+        <span class="trend-pill">Escalation: ${fmtPct(point.escalation_rate)}</span>
+      </div>
+    </div>
+  `).join("");
 }
 
 async function loadSessions() {
