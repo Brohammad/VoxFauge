@@ -68,6 +68,42 @@ class OrganizationMemberModel(Base):
     user: Mapped[UserModel] = relationship(back_populates="memberships")
 
 
+class SamlConnectionModel(Base):
+    __tablename__ = "saml_connections"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    provider_type: Mapped[str] = mapped_column(String(32), nullable=False, default="generic")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
+    idp_entity_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    idp_sso_url: Mapped[str] = mapped_column(String(512), nullable=False)
+    idp_x509_cert: Mapped[str] = mapped_column(Text, nullable=False)
+    sp_entity_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    acs_url: Mapped[str] = mapped_column(String(512), nullable=False)
+    default_role: Mapped[str] = mapped_column(String(32), nullable=False, default="member")
+    role_mapping_rules: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
 class ApiKeyModel(Base):
     __tablename__ = "api_keys"
 

@@ -55,3 +55,11 @@ class OrganizationNotFoundError(VoxForgeError):
 class ApiKeyNotFoundError(VoxForgeError):
     def __init__(self, key_id: str) -> None:
         super().__init__(f"API key not found: {key_id}", code="api_key_not_found")
+
+
+class SamlConnectionNotFoundError(VoxForgeError):
+    def __init__(self, connection_id: str) -> None:
+        super().__init__(
+            f"SAML connection not found: {connection_id}",
+            code="saml_connection_not_found",
+        )

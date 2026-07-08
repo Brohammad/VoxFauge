@@ -8,13 +8,16 @@ from voxforge.core.domain.auth import ApiKey, Organization, OrganizationMember, 
 from voxforge.core.exceptions import (
     ApiKeyNotFoundError,
     OrganizationNotFoundError,
+    SamlConnectionNotFoundError,
     UserNotFoundError,
 )
+from voxforge.core.domain.sso import SamlConnection, SamlConnectionStatus, SamlProviderType
 from voxforge.infrastructure.db.models import (
     ApiKeyModel,
     AuditLogModel,
     OrganizationMemberModel,
     OrganizationModel,
+    SamlConnectionModel,
     UserModel,
 )
 from voxforge.infrastructure.security.tokens import slugify
@@ -265,3 +268,101 @@ class AuditLogRepository:
         )
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
+
+
+class SamlConnectionRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def create(
+        self,
+        *,
+        org_id: UUID,
+        provider_type: SamlProviderType,
+        status: SamlConnectionStatus,
+        idp_entity_id: str,
+        idp_sso_url: str,
+        idp_x509_cert: str,
+        sp_entity_id: str,
+        acs_url: str,
+        default_role: OrgRole,
+        role_mapping_rules: dict,
+        actor_user_id: UUID | None,
+    ) -> SamlConnection:
+        model = SamlConnectionModel(
+            org_id=org_id,
+            provider_type=provider_type,
+            status=status,
+            idp_entity_id=idp_entity_id,
+            idp_sso_url=idp_sso_url,
+            idp_x509_cert=idp_x509_cert,
+            sp_entity_id=sp_entity_id,
+            acs_url=acs_url,
+            default_role=default_role,
+            role_mapping_rules=role_mapping_rules,
+            created_by_user_id=actor_user_id,
+            updated_by_user_id=actor_user_id,
+        )
+        self._session.add(model)
+        await self._session.flush()
+        await self._session.refresh(model)
+        return self._to_entity(model)
+
+    async def get(self, connection_id: UUID) -> SamlConnection:
+        model = await self._session.get(SamlConnectionModel, connection_id)
+        if model is None:
+            raise SamlConnectionNotFoundError(str(connection_id))
+        return self._to_entity(model)
+
+    async def list_for_org(self, org_id: UUID) -> list[SamlConnection]:
+        stmt = (
+            select(SamlConnectionModel)
+            .where(SamlConnectionModel.org_id == org_id)
+            .order_by(SamlConnectionModel.created_at.desc())
+        )
+        result = await self._session.execute(stmt)
+        return [self._to_entity(model) for model in result.scalars().all()]
+
+    async def update(
+        self,
+        *,
+        connection_id: UUID,
+        status: SamlConnectionStatus,
+        role_mapping_rules: dict,
+        actor_user_id: UUID | None,
+    ) -> SamlConnection:
+        model = await self._session.get(SamlConnectionModel, connection_id)
+        if model is None:
+            raise SamlConnectionNotFoundError(str(connection_id))
+        model.status = status
+        model.role_mapping_rules = role_mapping_rules
+        model.updated_by_user_id = actor_user_id
+        await self._session.flush()
+        await self._session.refresh(model)
+        return self._to_entity(model)
+
+    async def delete(self, connection_id: UUID) -> None:
+        model = await self._session.get(SamlConnectionModel, connection_id)
+        if model is None:
+            raise SamlConnectionNotFoundError(str(connection_id))
+        await self._session.delete(model)
+
+    @staticmethod
+    def _to_entity(model: SamlConnectionModel) -> SamlConnection:
+        return SamlConnection(
+            id=model.id,
+            org_id=model.org_id,
+            provider_type=SamlProviderType(model.provider_type),
+            status=SamlConnectionStatus(model.status),
+            idp_entity_id=model.idp_entity_id,
+            idp_sso_url=model.idp_sso_url,
+            idp_x509_cert=model.idp_x509_cert,
+            sp_entity_id=model.sp_entity_id,
+            acs_url=model.acs_url,
+            default_role=OrgRole(model.default_role),
+            role_mapping_rules=model.role_mapping_rules or {},
+            created_by_user_id=model.created_by_user_id,
+            updated_by_user_id=model.updated_by_user_id,
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+        )

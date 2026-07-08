@@ -30,6 +30,7 @@ from voxforge.modules.agent_config.application.service import AgentConfigService
 from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
 from voxforge.modules.alerts.application.service import AlertService
 from voxforge.modules.auth.application.service import AuthService
+from voxforge.modules.auth.application.sso_service import SamlConnectionService
 from voxforge.modules.dashboard.application.service import DashboardService
 from voxforge.modules.evaluation.application.service import EvaluationEngine
 from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
@@ -50,6 +51,12 @@ def get_auth_service(
     settings: Settings = Depends(get_settings),
 ) -> AuthService:
     return AuthService(db, settings)
+
+
+def get_saml_connection_service(
+    db: AsyncSession = Depends(get_db_session),
+) -> SamlConnectionService:
+    return SamlConnectionService(db)
 
 
 async def get_current_principal(

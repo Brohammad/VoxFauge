@@ -12,6 +12,7 @@ from voxforge.api.v1.onboarding import router as onboarding_router
 from voxforge.api.v1.orgs import router as orgs_router
 from voxforge.api.v1.replay import router as replay_router
 from voxforge.api.v1.sessions import router as sessions_router
+from voxforge.api.v1.sso import router as sso_router
 from voxforge.api.v1.templates import router as templates_router
 from voxforge.api.v1.tools import router as tools_router
 
@@ -22,6 +23,7 @@ api_v1_router.include_router(orgs_router)
 api_v1_router.include_router(api_keys_router)
 api_v1_router.include_router(sessions_router)
 api_v1_router.include_router(replay_router)
+api_v1_router.include_router(sso_router)
 api_v1_router.include_router(livekit_router)
 api_v1_router.include_router(memory_router)
 api_v1_router.include_router(onboarding_router)
