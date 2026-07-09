@@ -20,6 +20,7 @@ wheels/
 *.egg
 
 .env
+.env.production
 .venv
 env/
 venv/
@@ -40,3 +41,9 @@ htmlcov/
 *.log
 *.wav
 *.mp3
+
+deploy/backups/*.sql.gz
+deploy/nginx/certs-ready
+deploy/nginx/conf.d/voxforge.conf
+deploy/nginx/conf.d/voxforge-http.conf
+deploy/nginx/conf.d/voxforge-https.conf

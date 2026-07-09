@@ -1,0 +1,15 @@
+# HTTP — ACME challenges and redirect to HTTPS (after certificates exist).
+# Copy to voxforge.conf and replace ${DOMAIN} before first deploy, or use deploy.sh.
+
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
