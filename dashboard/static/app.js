@@ -789,6 +789,9 @@ document.querySelectorAll(".nav-link").forEach((link) => {
       if (link.dataset.section === "sso") {
         await loadSso();
       }
+      if (link.dataset.section === "onboarding") {
+        await loadOnboardingStatus();
+      }
     } catch (err) {
       showError(err.message);
     }

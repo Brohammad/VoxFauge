@@ -178,8 +178,9 @@ def get_dashboard_service(
 
 def get_onboarding_service(
     db: AsyncSession = Depends(get_db_session),
+    evaluation_engine: EvaluationEngine | None = Depends(get_evaluation_engine),
 ) -> OnboardingService:
-    return OnboardingService(db)
+    return OnboardingService(db, evaluation_engine)
 
 
 def get_outcome_service(

@@ -5,17 +5,24 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voxforge.core.domain.entities import TransportType, TurnMetrics
+from voxforge.core.domain.evaluation import TurnEvaluationInput
 from voxforge.infrastructure.db.models import OnboardingRunModel, SupportTemplateModel
 from voxforge.infrastructure.db.outcome_repository import OutcomeRepository
 from voxforge.infrastructure.observability.metrics import onboarding_steps_total
+from voxforge.modules.evaluation.application.service import EvaluationEngine
 from voxforge.modules.outcomes.application.service import OutcomeExtractionService
 from voxforge.modules.session_manager.application.service import SessionManager
 
 
 class OnboardingService:
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(
+        self,
+        db: AsyncSession,
+        evaluation_engine: EvaluationEngine | None = None,
+    ) -> None:
         self._db = db
         self._outcomes = OutcomeExtractionService(OutcomeRepository(db))
+        self._evaluation = evaluation_engine
 
     async def start(self, org_id: UUID, user_id: UUID | None) -> OnboardingRunModel:
         run = OnboardingRunModel(
@@ -75,14 +82,31 @@ class OnboardingService:
         )
         await session_manager.end_session(session.id, reason="onboarding_sample")
 
+        user_transcript = "Hi, I need help changing the billing contact on my account."
+        assistant_response = (
+            "I can help with that. I verified your account "
+            "and updated the billing contact."
+        )
+
+        if self._evaluation is not None:
+            await self._evaluation.evaluate_turn(
+                TurnEvaluationInput(
+                    session_id=session.id,
+                    org_id=org_id,
+                    user_transcript=user_transcript,
+                    assistant_response=assistant_response,
+                    stt_ms=120.0,
+                    llm_first_token_ms=300.0,
+                    tts_first_byte_ms=180.0,
+                    e2e_ms=1450.0,
+                )
+            )
+
         await self._outcomes.record_outcome(
             org_id=org_id,
             session_id=session.id,
-            user_transcript="Hi, I need help changing the billing contact on my account.",
-            assistant_response=(
-                "I can help with that. I verified your account "
-                "and updated the billing contact."
-            ),
+            user_transcript=user_transcript,
+            assistant_response=assistant_response,
             interrupted=False,
             resolution_time_seconds=95.0,
             user_metadata={"intent": "billing_contact_change"},

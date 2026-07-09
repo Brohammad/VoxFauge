@@ -59,3 +59,15 @@ async def test_onboarding_and_template_endpoints(auth_client):
     )
     assert outcomes_30d_resp.status_code == 200
     assert len(outcomes_30d_resp.json()["trend"]) == 1
+
+    session_id = sample_resp.json()["test_session_id"]
+    eval_resp = await auth_client.get(
+        f"/api/v1/sessions/{session_id}/evaluations",
+        headers=headers,
+    )
+    assert eval_resp.status_code == 200
+    assert len(eval_resp.json()["evaluations"]) >= 1
+
+    dashboard_eval_resp = await auth_client.get("/api/v1/dashboard/evaluations", headers=headers)
+    assert dashboard_eval_resp.status_code == 200
+    assert dashboard_eval_resp.json()["total_runs"] >= 1
