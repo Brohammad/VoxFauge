@@ -17,6 +17,7 @@
         <a href="#overview" class="nav-link active" data-section="overview">Overview</a>
         <a href="#onboarding" class="nav-link" data-section="onboarding">Onboarding</a>
         <a href="#alerts" class="nav-link" data-section="alerts">Alerts</a>
+        <a href="#policies" class="nav-link" data-section="policies">Policy Presets</a>
         <a href="#sessions" class="nav-link" data-section="sessions">Sessions</a>
         <a href="#replay" class="nav-link" data-section="replay">Replay</a>
         <a href="#latency" class="nav-link" data-section="latency">Latency</a>
@@ -76,6 +77,33 @@
           <p>Threshold breaches for quality, latency, escalations, and task success.</p>
           <div id="alerts-summary" class="eval-grid"></div>
           <ul id="alerts-list" class="alerts-list"></ul>
+        </div>
+      </section>
+
+      <section id="policies" class="section hidden">
+        <div class="panel">
+          <h2>Policy Presets</h2>
+          <p>Apply reusable policy bundles to create a new active agent config version. Roll back from version history when regressions appear.</p>
+          <div id="policy-active" class="card-sub">No active agent config loaded.</div>
+          <div id="policy-presets" class="preset-grid"></div>
+        </div>
+        <div class="panel">
+          <h2>Config Version History</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Version</th>
+                  <th>Label</th>
+                  <th>Status</th>
+                  <th>Change Note</th>
+                  <th>Created</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="policy-versions-body"></tbody>
+            </table>
+          </div>
         </div>
       </section>
 

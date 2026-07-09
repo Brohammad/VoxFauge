@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from voxforge.api.dependencies import get_agent_config_service, require_scope
-from voxforge.core.domain.agent_config import AgentConfigVersion
+from voxforge.core.domain.agent_config import AgentConfigVersion, PolicyPreset
 from voxforge.core.domain.auth import Principal
-from voxforge.infrastructure.db.agent_config_repository import ConfigVersionNotFoundError
+from voxforge.infrastructure.db.agent_config_repository import ConfigPresetNotFoundError, ConfigVersionNotFoundError
 from voxforge.modules.agent_config.application.service import AgentConfigService
 
 router = APIRouter(prefix="/agent-configs", tags=["agent-configs"])
@@ -39,6 +39,52 @@ class CreateAgentConfigRequest(BaseModel):
 class RollbackAgentConfigRequest(BaseModel):
     target_version: int = Field(ge=1)
     change_note: str | None = None
+
+
+class PolicyPresetResponse(BaseModel):
+    slug: str
+    name: str
+    description: str
+    source: str
+    prompt_config: dict
+    orchestrator_config: dict
+    eval_thresholds: dict
+    tool_config: dict
+
+
+class ApplyPolicyPresetRequest(BaseModel):
+    change_note: str | None = None
+    activate: bool = True
+
+
+@router.get("/presets", response_model=list[PolicyPresetResponse])
+async def list_policy_presets(
+    principal: Principal = Depends(require_scope("sessions:read")),
+    service: AgentConfigService = Depends(get_agent_config_service),
+) -> list[PolicyPresetResponse]:
+    presets = await service.list_presets()
+    return [_preset_to_response(item) for item in presets]
+
+
+@router.post("/presets/{preset_slug}/apply", response_model=AgentConfigVersionResponse, status_code=201)
+async def apply_policy_preset(
+    preset_slug: str,
+    body: ApplyPolicyPresetRequest,
+    principal: Principal = Depends(require_scope("sessions:write")),
+    service: AgentConfigService = Depends(get_agent_config_service),
+) -> AgentConfigVersionResponse:
+    try:
+        version = await service.apply_preset(
+            org_id=principal.org_id,
+            user_id=principal.user_id,
+            preset_slug=preset_slug,
+            change_note=body.change_note,
+            activate=body.activate,
+        )
+    except ConfigPresetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from None
+    await service.commit()
+    return _to_response(version)
 
 
 @router.get("", response_model=list[AgentConfigVersionResponse])
@@ -112,6 +158,19 @@ def _to_response(item: AgentConfigVersion) -> AgentConfigVersionResponse:
         created_by_user_id=item.created_by_user_id,
         change_note=item.change_note,
         created_at=_iso(item.created_at),
+    )
+
+
+def _preset_to_response(item: PolicyPreset) -> PolicyPresetResponse:
+    return PolicyPresetResponse(
+        slug=item.slug,
+        name=item.name,
+        description=item.description,
+        source=item.source,
+        prompt_config=item.prompt_config,
+        orchestrator_config=item.orchestrator_config,
+        eval_thresholds=item.eval_thresholds,
+        tool_config=item.tool_config,
     )
 
 

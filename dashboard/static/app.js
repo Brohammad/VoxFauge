@@ -29,6 +29,9 @@ const els = {
   replayOutcome: document.getElementById("replay-outcome"),
   replayExplanations: document.getElementById("replay-explanations"),
   replayTimeline: document.getElementById("replay-timeline"),
+  policyActive: document.getElementById("policy-active"),
+  policyPresets: document.getElementById("policy-presets"),
+  policyVersionsBody: document.getElementById("policy-versions-body"),
 };
 
 els.tokenInput.value = token;
@@ -41,6 +44,23 @@ async function api(path) {
     const body = await res.text();
     throw new Error(`${res.status}: ${body}`);
   }
+  return res.json();
+}
+
+async function agentConfigApi(path, options = {}) {
+  const res = await fetch(`/api/v1/agent-configs${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${res.status}: ${body}`);
+  }
+  if (res.status === 204) return null;
   return res.json();
 }
 
@@ -319,6 +339,99 @@ async function loadAlerts() {
   }
 }
 
+function renderPolicyThresholds(thresholds) {
+  const entries = Object.entries(thresholds || {});
+  if (!entries.length) return "No eval thresholds";
+  return entries.map(([key, value]) => `${key}: ${value}`).join(" · ");
+}
+
+function renderPolicyPresets(presets) {
+  if (!els.policyPresets) return;
+  els.policyPresets.innerHTML = presets.map((preset) => `
+    <article class="preset-card">
+      <div>
+        <span class="preset-source">${escapeHtml(preset.source)}</span>
+        <h3>${escapeHtml(preset.name)}</h3>
+      </div>
+      <p class="preset-description">${escapeHtml(preset.description)}</p>
+      <div class="preset-thresholds">${escapeHtml(renderPolicyThresholds(preset.eval_thresholds))}</div>
+      <button type="button" class="link-btn" data-apply-preset="${escapeHtml(preset.slug)}">Apply Preset</button>
+    </article>
+  `).join("") || "<p class='card-sub'>No policy presets available.</p>";
+
+  els.policyPresets.querySelectorAll("[data-apply-preset]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      try {
+        clearError();
+        await agentConfigApi(`/presets/${btn.dataset.applyPreset}/apply`, {
+          method: "POST",
+          body: JSON.stringify({ change_note: "Applied from dashboard" }),
+        });
+        await loadPolicies();
+      } catch (err) {
+        showError(err.message);
+      }
+    });
+  });
+}
+
+function renderPolicyVersions(versions) {
+  if (!els.policyVersionsBody) return;
+  els.policyVersionsBody.innerHTML = versions.map((version) => `
+    <tr>
+      <td>v${version.version}</td>
+      <td><code>${escapeHtml(version.label)}</code></td>
+      <td><span class="status-pill ${version.is_active ? "active" : "ended"}">${version.is_active ? "active" : "inactive"}</span></td>
+      <td>${escapeHtml(version.change_note || "—")}</td>
+      <td>${fmtDate(version.created_at)}</td>
+      <td>
+        ${version.is_active ? "" : `<button type="button" class="link-btn" data-rollback-version="${version.version}">Rollback</button>`}
+      </td>
+    </tr>
+  `).join("") || "<tr><td colspan='6'>No config versions yet</td></tr>";
+
+  els.policyVersionsBody.querySelectorAll("[data-rollback-version]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      try {
+        clearError();
+        await agentConfigApi("/rollback", {
+          method: "POST",
+          body: JSON.stringify({
+            target_version: Number(btn.dataset.rollbackVersion),
+            change_note: "Rollback from dashboard",
+          }),
+        });
+        await loadPolicies();
+      } catch (err) {
+        showError(err.message);
+      }
+    });
+  });
+}
+
+async function loadPolicies() {
+  const [presets, active, versions] = await Promise.all([
+    agentConfigApi("/presets"),
+    agentConfigApi("/active"),
+    agentConfigApi(""),
+  ]);
+
+  if (els.policyActive) {
+    if (active) {
+      els.policyActive.textContent = [
+        `Active v${active.version}`,
+        active.label,
+        active.change_note || "No change note",
+      ].join(" · ");
+    } else {
+      els.policyActive.textContent = "No active agent config yet. Apply a preset to create one.";
+    }
+  }
+
+  renderPolicyPresets(presets);
+  renderPolicyVersions(versions);
+}
+
 function renderOnboardingStatus(run) {
   if (!run) {
     els.onboardingStatus.textContent = "No onboarding run yet.";
@@ -368,6 +481,7 @@ async function refreshAll() {
       loadEvaluations(),
       loadActivity(),
       loadAlerts(),
+      loadPolicies(),
     ]);
     setConnected(true);
   } catch (err) {
@@ -442,9 +556,17 @@ els.replayLoadBtn?.addEventListener("click", async () => {
 });
 
 document.querySelectorAll(".nav-link").forEach((link) => {
-  link.addEventListener("click", (e) => {
+  link.addEventListener("click", async (e) => {
     e.preventDefault();
     showSection(link.dataset.section);
+    if (link.dataset.section === "policies" && token) {
+      try {
+        clearError();
+        await loadPolicies();
+      } catch (err) {
+        showError(err.message);
+      }
+    }
   });
 });
 

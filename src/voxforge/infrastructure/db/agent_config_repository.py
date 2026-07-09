@@ -16,6 +16,14 @@ class ConfigVersionNotFoundError(VoxForgeError):
         )
 
 
+class ConfigPresetNotFoundError(VoxForgeError):
+    def __init__(self, preset_slug: str) -> None:
+        super().__init__(
+            f"Policy preset not found: {preset_slug}",
+            code="config_preset_not_found",
+        )
+
+
 class AgentConfigRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session

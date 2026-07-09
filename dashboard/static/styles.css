@@ -496,6 +496,48 @@ th { color: var(--muted); font-weight: 500; font-size: 0.75rem; text-transform: 
 .replay-event.outcome .replay-event-type { color: #c4b5fd; }
 .replay-event.metric .replay-event-type { color: #fdba74; }
 
+.preset-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.85rem;
+}
+
+.preset-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.preset-card h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.preset-source {
+  display: inline-block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent2);
+}
+
+.preset-description {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.preset-thresholds {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
 @media (max-width: 768px) {
   .layout { flex-direction: column; }
   .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; }
