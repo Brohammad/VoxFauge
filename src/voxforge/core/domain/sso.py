@@ -20,6 +20,12 @@ class SamlConnectionStatus(StrEnum):
     DISABLED = "disabled"
 
 
+class SamlAssertion(BaseModel):
+    email: str
+    full_name: str
+    groups: list[str] = Field(default_factory=list)
+
+
 class SamlConnection(BaseModel):
     id: UUID
     org_id: UUID

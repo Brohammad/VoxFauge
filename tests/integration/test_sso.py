@@ -1,4 +1,26 @@
+import base64
+
 import pytest
+
+SAMPLE_SAML = """<?xml version="1.0" encoding="UTF-8"?>
+<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">
+  <saml:Assertion>
+    <saml:Subject>
+      <saml:NameID>fallback@example.com</saml:NameID>
+    </saml:Subject>
+    <saml:AttributeStatement>
+      <saml:Attribute Name="email">
+        <saml:AttributeValue>sso-user@example.com</saml:AttributeValue>
+      </saml:Attribute>
+      <saml:Attribute Name="displayName">
+        <saml:AttributeValue>Sso User</saml:AttributeValue>
+      </saml:Attribute>
+      <saml:Attribute Name="groups">
+        <saml:AttributeValue>support_admins</saml:AttributeValue>
+      </saml:Attribute>
+    </saml:AttributeStatement>
+  </saml:Assertion>
+</samlp:Response>"""
 
 
 async def _register_user(auth_client, email: str, org_name: str) -> tuple[str, str]:
@@ -59,16 +81,28 @@ async def test_saml_connection_crud_scaffold(auth_client):
     )
     assert begin_login_resp.status_code == 200
     begin_payload = begin_login_resp.json()
-    assert begin_payload["status"] == "not_implemented"
+    assert begin_payload["status"] == "redirect"
     assert begin_payload["connection_id"] == connection_id
+
+    metadata_resp = await auth_client.get(
+        f"/api/v1/orgs/{org_id}/sso/saml/{connection_id}/metadata",
+        headers=headers,
+    )
+    assert metadata_resp.status_code == 200
+    assert "EntityDescriptor" in metadata_resp.text
 
     acs_resp = await auth_client.post(
         f"/api/v1/orgs/{org_id}/sso/saml/acs",
-        headers=headers,
-        json={"saml_response": "fake-response", "relay_state": "relay-123"},
+        json={
+            "saml_response": base64.b64encode(SAMPLE_SAML.encode("utf-8")).decode("utf-8"),
+            "relay_state": f"org:{org_id}:connection:{connection_id}",
+        },
     )
     assert acs_resp.status_code == 200
-    assert acs_resp.json()["status"] == "not_implemented"
+    acs_payload = acs_resp.json()
+    assert acs_payload["status"] == "authenticated"
+    assert acs_payload["role"] == "admin"
+    assert acs_payload["tokens"]["access_token"]
 
     delete_resp = await auth_client.delete(
         f"/api/v1/orgs/{org_id}/sso/saml/{connection_id}",

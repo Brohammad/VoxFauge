@@ -129,6 +129,22 @@ class OrganizationMemberRepository:
         model = result.scalar_one_or_none()
         return self._to_entity(model) if model else None
 
+    async def upsert_member(
+        self, *, org_id: UUID, user_id: UUID, role: OrgRole
+    ) -> OrganizationMember:
+        stmt = select(OrganizationMemberModel).where(
+            OrganizationMemberModel.org_id == org_id,
+            OrganizationMemberModel.user_id == user_id,
+        )
+        result = await self._session.execute(stmt)
+        model = result.scalar_one_or_none()
+        if model is None:
+            return await self.add_member(org_id=org_id, user_id=user_id, role=role)
+        model.role = role
+        await self._session.flush()
+        await self._session.refresh(model)
+        return self._to_entity(model)
+
     async def list_members(self, org_id: UUID) -> list[OrganizationMember]:
         stmt = (
             select(OrganizationMemberModel)
@@ -318,6 +334,18 @@ class SamlConnectionRepository:
         stmt = (
             select(SamlConnectionModel)
             .where(SamlConnectionModel.org_id == org_id)
+            .order_by(SamlConnectionModel.created_at.desc())
+        )
+        result = await self._session.execute(stmt)
+        return [self._to_entity(model) for model in result.scalars().all()]
+
+    async def get_active_for_org(self, org_id: UUID) -> list[SamlConnection]:
+        stmt = (
+            select(SamlConnectionModel)
+            .where(
+                SamlConnectionModel.org_id == org_id,
+                SamlConnectionModel.status == SamlConnectionStatus.ACTIVE,
+            )
             .order_by(SamlConnectionModel.created_at.desc())
         )
         result = await self._session.execute(stmt)

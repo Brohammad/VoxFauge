@@ -63,3 +63,8 @@ class SamlConnectionNotFoundError(VoxForgeError):
             f"SAML connection not found: {connection_id}",
             code="saml_connection_not_found",
         )
+
+
+class SamlAssertionError(VoxForgeError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message, code="saml_assertion_error")

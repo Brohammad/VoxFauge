@@ -1,12 +1,13 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from voxforge.api.dependencies import get_current_principal, get_saml_connection_service
-from voxforge.core.domain.auth import OrgRole, Principal
+from voxforge.core.domain.auth import OrgRole, Principal, TokenPair
 from voxforge.core.domain.sso import SamlConnection, SamlConnectionStatus, SamlProviderType
-from voxforge.core.exceptions import ForbiddenError, SamlConnectionNotFoundError
+from voxforge.core.exceptions import ForbiddenError, SamlAssertionError, SamlConnectionNotFoundError
 from voxforge.modules.auth.application.sso_service import SamlConnectionService
 
 router = APIRouter(prefix="/orgs/{org_id}/sso/saml", tags=["sso"])
@@ -31,6 +32,15 @@ class SamlConnectionUpdateRequest(BaseModel):
 class SamlAcsConsumeRequest(BaseModel):
     saml_response: str = Field(min_length=1)
     relay_state: str | None = None
+    connection_id: UUID | None = None
+
+
+class SamlAcsResponse(BaseModel):
+    status: str
+    user_id: str
+    org_id: str
+    role: str
+    tokens: TokenPair
 
 
 class SamlConnectionResponse(BaseModel):
@@ -150,6 +160,26 @@ async def delete_saml_connection(
         raise HTTPException(status_code=404, detail=exc.message) from exc
 
 
+@router.get("/{connection_id}/metadata")
+async def get_saml_metadata(
+    org_id: UUID,
+    connection_id: UUID,
+    principal: Principal = Depends(get_current_principal),
+    service: SamlConnectionService = Depends(get_saml_connection_service),
+) -> Response:
+    try:
+        metadata = await service.get_sp_metadata(
+            org_id=org_id,
+            connection_id=connection_id,
+            actor=principal,
+        )
+    except ForbiddenError as exc:
+        raise HTTPException(status_code=403, detail=exc.message) from exc
+    except SamlConnectionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+    return Response(content=metadata, media_type="application/samlmetadata+xml")
+
+
 @router.get("/{connection_id}/login")
 async def begin_saml_login(
     org_id: UUID,
@@ -169,21 +199,22 @@ async def begin_saml_login(
         raise HTTPException(status_code=404, detail=exc.message) from exc
 
 
-@router.post("/acs")
+@router.post("/acs", response_model=SamlAcsResponse)
 async def consume_saml_acs(
     org_id: UUID,
     body: SamlAcsConsumeRequest,
-    principal: Principal = Depends(get_current_principal),
     service: SamlConnectionService = Depends(get_saml_connection_service),
-) -> dict:
+) -> SamlAcsResponse:
     try:
         result = await service.consume_acs(
             org_id=org_id,
-            actor=principal,
             saml_response=body.saml_response,
             relay_state=body.relay_state,
+            connection_id=body.connection_id,
         )
         await service.commit()
     except ForbiddenError as exc:
         raise HTTPException(status_code=403, detail=exc.message) from exc
-    return result
+    except SamlAssertionError as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
+    return SamlAcsResponse(**result)

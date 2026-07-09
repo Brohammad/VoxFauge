@@ -55,8 +55,9 @@ def get_auth_service(
 
 def get_saml_connection_service(
     db: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
 ) -> SamlConnectionService:
-    return SamlConnectionService(db)
+    return SamlConnectionService(db, settings)
 
 
 async def get_current_principal(
