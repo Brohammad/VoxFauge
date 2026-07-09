@@ -9,6 +9,20 @@ class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "INFO"
 
+    public_base_url: str = ""
+    trusted_hosts: str = ""
+    cors_origins: str = ""
+
+    demo_enabled: bool = False
+    demo_org_id: str = "a0000000-0000-4000-8000-000000000001"
+    demo_user_id: str = "a0000000-0000-4000-8000-000000000002"
+    demo_email: str = "demo@voxforge.io"
+    demo_password_hint: str = "VoxForgeDemo!"
+
+    rate_limit_enabled: bool = True
+    rate_limit_per_minute: int = 60
+    rate_limit_paths: str = "/api/v1/auth,/api/v1/demo"
+
     database_url: str = "postgresql+asyncpg://voxforge:voxforge@localhost:5432/voxforge"
     redis_url: str = "redis://localhost:6379/0"
 
@@ -86,6 +100,18 @@ class Settings(BaseSettings):
     evaluation_hallucination_enabled: bool = True
     evaluation_judge_model: str = "gpt-4.1-mini"
     evaluation_min_hallucination_score: float = 0.7
+
+    @property
+    def rate_limit_path_prefixes(self) -> tuple[str, ...]:
+        return tuple(p.strip() for p in self.rate_limit_paths.split(",") if p.strip())
+
+    @property
+    def trusted_host_list(self) -> list[str]:
+        return [h.strip() for h in self.trusted_hosts.split(",") if h.strip()]
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
 
 @lru_cache

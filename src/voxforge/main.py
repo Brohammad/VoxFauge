@@ -3,25 +3,31 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from voxforge.api.v1.router import api_v1_router
 from voxforge.api.ws.voice import router as ws_router
 from voxforge.config import get_settings
 from voxforge.infrastructure.db.session import close_db, init_db
+from voxforge.infrastructure.http.rate_limit import RateLimitMiddleware
 from voxforge.infrastructure.observability.logging import setup_logging
 from voxforge.infrastructure.observability.telemetry import setup_telemetry
 from voxforge.infrastructure.redis.client import close_redis, init_redis
+from voxforge.infrastructure.security.production import validate_production_settings
 from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
 
 DASHBOARD_DIR = Path(__file__).resolve().parents[2] / "dashboard"
 LIVEKIT_EXAMPLE_DIR = Path(__file__).resolve().parents[2] / "examples" / "livekit-client"
+PUBLIC_DIR = Path(__file__).resolve().parents[2] / "public"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
+    validate_production_settings(settings)
     setup_logging(settings.log_level)
     setup_telemetry(settings)
     await init_db(settings.database_url)
@@ -50,8 +56,32 @@ def create_app() -> FastAPI:
         openapi_url="/api/v1/openapi.json",
         lifespan=lifespan,
     )
+
+    if settings.trusted_host_list:
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_host_list)
+    if settings.cors_origin_list:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.cors_origin_list,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    app.add_middleware(RateLimitMiddleware, settings=settings)
+
     app.include_router(api_v1_router, prefix="/api/v1")
     app.include_router(ws_router)
+
+    if PUBLIC_DIR.is_dir():
+        app.mount("/public", StaticFiles(directory=PUBLIC_DIR), name="public-static")
+
+        @app.get("/")
+        async def landing_page() -> FileResponse:
+            return FileResponse(PUBLIC_DIR / "landing" / "index.html")
+
+        @app.get("/demo")
+        async def demo_page() -> FileResponse:
+            return FileResponse(PUBLIC_DIR / "demo" / "index.html")
 
     if DASHBOARD_DIR.is_dir():
         app.mount(

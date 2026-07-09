@@ -4,6 +4,7 @@ from voxforge.api.v1.agent_configs import router as agent_configs_router
 from voxforge.api.v1.api_keys import router as api_keys_router
 from voxforge.api.v1.auth import router as auth_router
 from voxforge.api.v1.dashboard import router as dashboard_router
+from voxforge.api.v1.demo import router as demo_router
 from voxforge.api.v1.evaluations import router as evaluations_router
 from voxforge.api.v1.health import router as health_router
 from voxforge.api.v1.livekit import router as livekit_router
@@ -32,3 +33,4 @@ api_v1_router.include_router(agent_configs_router)
 api_v1_router.include_router(tools_router)
 api_v1_router.include_router(evaluations_router)
 api_v1_router.include_router(dashboard_router)
+api_v1_router.include_router(demo_router)
