@@ -1,6 +1,7 @@
 const API = "/api/v1/dashboard";
 let token = localStorage.getItem("voxforge_token") || "";
 let trendDays = Number(localStorage.getItem("voxforge_trend_days") || 7);
+let orgId = null;
 
 const els = {
   tokenInput: document.getElementById("token-input"),
@@ -32,6 +33,18 @@ const els = {
   policyActive: document.getElementById("policy-active"),
   policyPresets: document.getElementById("policy-presets"),
   policyVersionsBody: document.getElementById("policy-versions-body"),
+  ssoOrg: document.getElementById("sso-org"),
+  ssoConnectionsBody: document.getElementById("sso-connections-body"),
+  ssoCreateForm: document.getElementById("sso-create-form"),
+  ssoProviderType: document.getElementById("sso-provider-type"),
+  ssoIdpEntityId: document.getElementById("sso-idp-entity-id"),
+  ssoIdpSsoUrl: document.getElementById("sso-idp-sso-url"),
+  ssoIdpCert: document.getElementById("sso-idp-cert"),
+  ssoSpEntityId: document.getElementById("sso-sp-entity-id"),
+  ssoAcsUrl: document.getElementById("sso-acs-url"),
+  ssoDefaultRole: document.getElementById("sso-default-role"),
+  ssoRoleMapping: document.getElementById("sso-role-mapping"),
+  ssoLoginPreview: document.getElementById("sso-login-preview"),
 };
 
 els.tokenInput.value = token;
@@ -62,6 +75,50 @@ async function agentConfigApi(path, options = {}) {
   }
   if (res.status === 204) return null;
   return res.json();
+}
+
+async function authApi(path) {
+  const res = await fetch(`/api/v1/auth${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${res.status}: ${body}`);
+  }
+  return res.json();
+}
+
+async function ensureOrgId() {
+  if (orgId) return orgId;
+  const me = await authApi("/me");
+  orgId = me.org_id;
+  return orgId;
+}
+
+function defaultAcsUrl(id) {
+  return `${window.location.origin}/api/v1/orgs/${id}/sso/saml/acs`;
+}
+
+async function ssoApi(path, options = {}) {
+  const id = await ensureOrgId();
+  const res = await fetch(`/api/v1/orgs/${id}/sso/saml${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${res.status}: ${body}`);
+  }
+  if (res.status === 204) return null;
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return res.json();
+  }
+  return res.text();
 }
 
 function showError(msg) {
@@ -432,6 +489,143 @@ async function loadPolicies() {
   renderPolicyVersions(versions);
 }
 
+function parseRoleMappingRules(raw) {
+  const value = (raw || "").trim();
+  if (!value) return {};
+  const parsed = JSON.parse(value);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Role mapping rules must be a JSON object");
+  }
+  return parsed;
+}
+
+function renderSsoConnections(connections) {
+  if (!els.ssoConnectionsBody) return;
+  els.ssoConnectionsBody.innerHTML = connections.map((connection) => `
+    <tr>
+      <td>${escapeHtml(connection.provider_type)}</td>
+      <td><span class="status-pill ${connection.status}">${escapeHtml(connection.status)}</span></td>
+      <td><code>${escapeHtml(shortId(connection.idp_entity_id))}</code></td>
+      <td><code>${escapeHtml(connection.sp_entity_id)}</code></td>
+      <td>${fmtDate(connection.updated_at)}</td>
+      <td>
+        <div class="sso-actions">
+          ${connection.status !== "active"
+            ? `<button type="button" class="link-btn" data-sso-activate="${connection.id}">Activate</button>`
+            : `<button type="button" class="link-btn" data-sso-disable="${connection.id}">Disable</button>`}
+          <button type="button" class="link-btn" data-sso-metadata="${connection.id}">Metadata</button>
+          <button type="button" class="link-btn" data-sso-login="${connection.id}">Test Login</button>
+          <button type="button" class="link-btn" data-sso-delete="${connection.id}">Delete</button>
+        </div>
+      </td>
+    </tr>
+  `).join("") || "<tr><td colspan='6'>No SAML connections configured yet.</td></tr>";
+
+  const byId = Object.fromEntries(connections.map((item) => [item.id, item]));
+
+  els.ssoConnectionsBody.querySelectorAll("[data-sso-activate]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const connection = byId[btn.dataset.ssoActivate];
+      await updateSsoConnection(connection.id, {
+        status: "active",
+        role_mapping_rules: connection.role_mapping_rules || {},
+      });
+    });
+  });
+
+  els.ssoConnectionsBody.querySelectorAll("[data-sso-disable]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const connection = byId[btn.dataset.ssoDisable];
+      await updateSsoConnection(connection.id, {
+        status: "disabled",
+        role_mapping_rules: connection.role_mapping_rules || {},
+      });
+    });
+  });
+
+  els.ssoConnectionsBody.querySelectorAll("[data-sso-metadata]").forEach((btn) => {
+    btn.addEventListener("click", () => downloadSsoMetadata(btn.dataset.ssoMetadata));
+  });
+
+  els.ssoConnectionsBody.querySelectorAll("[data-sso-login]").forEach((btn) => {
+    btn.addEventListener("click", () => testSsoLogin(btn.dataset.ssoLogin));
+  });
+
+  els.ssoConnectionsBody.querySelectorAll("[data-sso-delete]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!window.confirm("Delete this SAML connection?")) return;
+      try {
+        clearError();
+        await ssoApi(`/${btn.dataset.ssoDelete}`, { method: "DELETE" });
+        await loadSso();
+      } catch (err) {
+        showError(err.message);
+      }
+    });
+  });
+}
+
+async function updateSsoConnection(connectionId, body) {
+  try {
+    clearError();
+    await ssoApi(`/${connectionId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+    await loadSso();
+  } catch (err) {
+    showError(err.message);
+  }
+}
+
+async function downloadSsoMetadata(connectionId) {
+  try {
+    clearError();
+    const xml = await ssoApi(`/${connectionId}/metadata`);
+    const blob = new Blob([xml], { type: "application/samlmetadata+xml" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `sp-metadata-${connectionId}.xml`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    showError(err.message);
+  }
+}
+
+async function testSsoLogin(connectionId) {
+  try {
+    clearError();
+    const login = await ssoApi(`/${connectionId}/login`);
+    if (els.ssoLoginPreview) {
+      els.ssoLoginPreview.textContent = JSON.stringify(login, null, 2);
+    }
+    window.open(login.redirect_url, "_blank", "noopener,noreferrer");
+  } catch (err) {
+    showError(err.message);
+  }
+}
+
+function prefillSsoFormDefaults(id) {
+  if (els.ssoAcsUrl && !els.ssoAcsUrl.value) {
+    els.ssoAcsUrl.value = defaultAcsUrl(id);
+  }
+  if (els.ssoSpEntityId && !els.ssoSpEntityId.value) {
+    els.ssoSpEntityId.value = "voxforge-sp";
+  }
+}
+
+async function loadSso() {
+  const id = await ensureOrgId();
+  if (els.ssoOrg) {
+    els.ssoOrg.textContent = `Organization ${id}`;
+  }
+  prefillSsoFormDefaults(id);
+  const connections = await ssoApi("");
+  renderSsoConnections(connections);
+}
+
 function renderOnboardingStatus(run) {
   if (!run) {
     els.onboardingStatus.textContent = "No onboarding run yet.";
@@ -492,6 +686,7 @@ async function refreshAll() {
 
 els.connectBtn.addEventListener("click", () => {
   token = els.tokenInput.value.trim();
+  orgId = null;
   localStorage.setItem("voxforge_token", token);
   refreshAll();
 });
@@ -555,17 +750,47 @@ els.replayLoadBtn?.addEventListener("click", async () => {
   }
 });
 
+els.ssoCreateForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    clearError();
+    const roleMappingRules = parseRoleMappingRules(els.ssoRoleMapping?.value);
+    await ssoApi("", {
+      method: "POST",
+      body: JSON.stringify({
+        provider_type: els.ssoProviderType?.value || "generic",
+        idp_entity_id: els.ssoIdpEntityId?.value.trim(),
+        idp_sso_url: els.ssoIdpSsoUrl?.value.trim(),
+        idp_x509_cert: els.ssoIdpCert?.value.trim(),
+        sp_entity_id: els.ssoSpEntityId?.value.trim(),
+        acs_url: els.ssoAcsUrl?.value.trim(),
+        default_role: els.ssoDefaultRole?.value || "member",
+        role_mapping_rules: roleMappingRules,
+      }),
+    });
+    els.ssoCreateForm.reset();
+    prefillSsoFormDefaults(await ensureOrgId());
+    await loadSso();
+  } catch (err) {
+    showError(err.message);
+  }
+});
+
 document.querySelectorAll(".nav-link").forEach((link) => {
   link.addEventListener("click", async (e) => {
     e.preventDefault();
     showSection(link.dataset.section);
-    if (link.dataset.section === "policies" && token) {
-      try {
-        clearError();
+    if (!token) return;
+    try {
+      clearError();
+      if (link.dataset.section === "policies") {
         await loadPolicies();
-      } catch (err) {
-        showError(err.message);
       }
+      if (link.dataset.section === "sso") {
+        await loadSso();
+      }
+    } catch (err) {
+      showError(err.message);
     }
   });
 });

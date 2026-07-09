@@ -252,6 +252,8 @@ th { color: var(--muted); font-weight: 500; font-size: 0.75rem; text-transform: 
 }
 
 .status-pill.active { background: #14532d; color: var(--success); }
+.status-pill.draft { background: #3f3f46; color: #d4d4d8; }
+.status-pill.disabled { background: #450a0a; color: #fca5a5; }
 .status-pill.completed { background: #1e3a5f; color: #93c5fd; }
 .status-pill.failed, .status-pill.error { background: #450a0a; color: #fca5a5; }
 
@@ -536,6 +538,48 @@ th { color: var(--muted); font-weight: 500; font-size: 0.75rem; text-transform: 
 .preset-thresholds {
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+.sso-form {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  gap: 0.85rem;
+}
+
+.sso-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.sso-form label.full-width {
+  grid-column: 1 / -1;
+}
+
+.sso-form input,
+.sso-form select,
+.sso-form textarea {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.sso-form textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.sso-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 
 @media (max-width: 768px) {

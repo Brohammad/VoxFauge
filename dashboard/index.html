@@ -18,6 +18,7 @@
         <a href="#onboarding" class="nav-link" data-section="onboarding">Onboarding</a>
         <a href="#alerts" class="nav-link" data-section="alerts">Alerts</a>
         <a href="#policies" class="nav-link" data-section="policies">Policy Presets</a>
+        <a href="#sso" class="nav-link" data-section="sso">SSO</a>
         <a href="#sessions" class="nav-link" data-section="sessions">Sessions</a>
         <a href="#replay" class="nav-link" data-section="replay">Replay</a>
         <a href="#latency" class="nav-link" data-section="latency">Latency</a>
@@ -104,6 +105,82 @@
               <tbody id="policy-versions-body"></tbody>
             </table>
           </div>
+        </div>
+      </section>
+
+      <section id="sso" class="section hidden">
+        <div class="panel">
+          <h2>SSO / SAML Connections</h2>
+          <p>Configure IdP metadata, activate connections, download SP metadata, and test SP-initiated login redirects.</p>
+          <div id="sso-org" class="card-sub">Connect with a JWT to manage SSO.</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Provider</th>
+                  <th>Status</th>
+                  <th>IdP Entity</th>
+                  <th>SP Entity</th>
+                  <th>Updated</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="sso-connections-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Create SAML Connection</h2>
+          <form id="sso-create-form" class="sso-form">
+            <label>
+              Provider
+              <select id="sso-provider-type" name="provider_type">
+                <option value="generic">Generic</option>
+                <option value="okta">Okta</option>
+                <option value="azure_ad">Azure AD</option>
+                <option value="google">Google</option>
+              </select>
+            </label>
+            <label>
+              IdP Entity ID
+              <input id="sso-idp-entity-id" type="text" placeholder="https://idp.example.com/metadata" required />
+            </label>
+            <label>
+              IdP SSO URL
+              <input id="sso-idp-sso-url" type="url" placeholder="https://idp.example.com/sso" required />
+            </label>
+            <label class="full-width">
+              IdP X509 Certificate
+              <textarea id="sso-idp-cert" rows="4" placeholder="-----BEGIN CERTIFICATE-----..." required></textarea>
+            </label>
+            <label>
+              SP Entity ID
+              <input id="sso-sp-entity-id" type="text" placeholder="voxforge-sp" required />
+            </label>
+            <label>
+              ACS URL
+              <input id="sso-acs-url" type="url" placeholder="https://your-host/api/v1/orgs/{org_id}/sso/saml/acs" required />
+            </label>
+            <label>
+              Default Role
+              <select id="sso-default-role" name="default_role">
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
+                <option value="owner">Owner</option>
+              </select>
+            </label>
+            <label class="full-width">
+              Role Mapping Rules (JSON)
+              <textarea id="sso-role-mapping" rows="3" placeholder='{"support_admins": "admin"}'></textarea>
+            </label>
+            <div class="button-row">
+              <button type="submit">Create Connection</button>
+            </div>
+          </form>
+        </div>
+        <div class="panel">
+          <h2>Login Redirect Preview</h2>
+          <pre id="sso-login-preview" class="json-preview">Initiate a test login from a connection row.</pre>
         </div>
       </section>
 
