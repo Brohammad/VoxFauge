@@ -19,6 +19,11 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
     return dot / (norm_a * norm_b)
 
 
+def _pgvector_literal(embedding: list[float]) -> str:
+    """Format a float list for PostgreSQL pgvector CAST(... AS vector)."""
+    return "[" + ",".join(str(v) for v in embedding) + "]"
+
+
 class MemoryRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -54,10 +59,10 @@ class MemoryRepository:
         if dialect == "postgresql" and embedding:
             await self._session.execute(
                 text(
-                    "UPDATE memory_entries SET embedding_vec = :vec::vector "
+                    "UPDATE memory_entries SET embedding_vec = CAST(:vec AS vector) "
                     "WHERE id = :id"
                 ),
-                {"vec": str(embedding), "id": str(entry_id)},
+                {"vec": _pgvector_literal(embedding), "id": str(entry_id)},
             )
 
         return self._to_entry(model)
@@ -74,25 +79,26 @@ class MemoryRepository:
         dialect = self._session.bind.dialect.name if self._session.bind else ""
 
         if dialect == "postgresql":
+            query_vec = _pgvector_literal(query_embedding)
             result = await self._session.execute(
                 text(
                     """
                     SELECT id, org_id, session_id, message_id, role, content,
                            entry_type, metadata, created_at,
-                           1 - (embedding_vec <=> :query_vec::vector) AS similarity
+                           1 - (embedding_vec <=> CAST(:query_vec AS vector)) AS similarity
                     FROM memory_entries
                     WHERE org_id = :org_id
                       AND session_id = :session_id
                       AND embedding_vec IS NOT NULL
                       AND entry_type = 'turn'
-                    ORDER BY embedding_vec <=> :query_vec::vector
+                    ORDER BY embedding_vec <=> CAST(:query_vec AS vector)
                     LIMIT :limit
                     """
                 ),
                 {
                     "org_id": str(org_id),
                     "session_id": str(session_id),
-                    "query_vec": str(query_embedding),
+                    "query_vec": query_vec,
                     "limit": limit,
                 },
             )
