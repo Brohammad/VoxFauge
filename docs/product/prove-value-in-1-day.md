@@ -25,6 +25,8 @@ Checklist for a pilot team to prove VoxForge support-deflection value without en
    - Click **2. Connect Token**
    - Click **3. Run Sample Call**
    - Expected status: `test_call_passed`
+   - Sample call runs through the production `VoicePipelineService` (LLM, TTS,
+     evaluation, outcomes) with a scripted billing-contact scenario
 
 4. **Verify business KPIs**
    - Return to **Overview**
