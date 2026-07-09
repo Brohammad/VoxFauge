@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     api_key_hash_pepper: str = "change-me-in-production"
 
     auth_required: bool = True
+    saml_require_signed_assertions: bool = True
+    saml_clock_skew_seconds: int = 120
 
     orchestrator_mode: str = "single"  # single | multi_agent
     max_agent_iterations: int = 2

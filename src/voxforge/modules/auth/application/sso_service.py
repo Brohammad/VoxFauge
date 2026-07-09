@@ -18,6 +18,7 @@ from voxforge.infrastructure.security.saml import (
     build_sp_metadata,
     parse_saml_assertion,
     resolve_role_from_mapping,
+    validate_saml_response,
 )
 from voxforge.infrastructure.security.tokens import (
     create_access_token,
@@ -155,6 +156,12 @@ class SamlConnectionService:
             org_id=org_id,
             connection_id=connection_id,
             relay_state=relay_state,
+        )
+        validate_saml_response(
+            saml_response,
+            connection,
+            require_signature=self._settings.saml_require_signed_assertions,
+            clock_skew_seconds=self._settings.saml_clock_skew_seconds,
         )
         assertion = parse_saml_assertion(saml_response)
         role = resolve_role_from_mapping(
