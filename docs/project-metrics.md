@@ -9,10 +9,10 @@
 | Metric | Value |
 |--------|------:|
 | Application modules | 17 |
-| REST endpoints | 56 |
+| REST endpoints | 58 |
 | WebSocket endpoints | 1 |
-| Tests collected | 143 |
-| Line coverage (`src/voxforge`) | 76% |
+| Tests collected | 154 |
+| Line coverage (`src/voxforge`) | n/a |
 | ADRs | 4 |
 | Architecture documents | 17 |
 | Benchmark documents | 1 |
@@ -41,7 +41,7 @@
 
 | Transport | Count | Entry points |
 |-----------|------:|--------------|
-| REST | 56 | `/api/v1/*` routers |
+| REST | 58 | `/api/v1/*` routers |
 | WebSocket | 1 | `/api/v1/ws/voice` |
 
 ## Tests
@@ -114,5 +114,5 @@ No servers are hardcoded in the repository; operators declare servers in environ
 | Phase 2 — CI hardening | Complete |
 | Phase 3 — MCP runtime discovery | Complete |
 | Phase 4 — LiveKit transport adapter | Complete |
-| Public deployment | Planned |
+| Phase 5 — Public deployment | Complete |
 | Production hardening & load testing | Planned |

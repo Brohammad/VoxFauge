@@ -23,7 +23,21 @@ uvicorn voxforge.main:app --reload --app-dir src
 
 API docs: http://localhost:8000/api/v1/docs
 
+Landing: http://localhost:8000/
+
+Demo: http://localhost:8000/demo
+
 Dashboard: http://localhost:8000/dashboard
+
+## Production deployment
+
+See [docs/deployment/guide.md](docs/deployment/guide.md) for VPS deployment with Docker Compose, NGINX, HTTPS, and the public demo.
+
+```bash
+cp .env.production.example .env.production
+# Edit secrets, then on your VPS:
+./deploy.sh init
+```
 
 ## Architecture
 

@@ -156,7 +156,7 @@ No servers are hardcoded in the repository; operators declare servers in environ
 | Phase 2 — CI hardening | Complete |
 | Phase 3 — MCP runtime discovery | Complete |
 | Phase 4 — LiveKit transport adapter | Complete |
-| Public deployment | Planned |
+| Phase 5 — Public deployment | Complete |
 | Production hardening & load testing | Planned |
 """
     (ROOT / "docs" / "project-metrics.md").write_text(content)
