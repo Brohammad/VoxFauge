@@ -4,6 +4,7 @@ from uuid import UUID
 
 from voxforge.config import Settings
 from voxforge.core.exceptions import ProviderError
+from voxforge.infrastructure.livekit.room_utils import room_name_for_session
 
 
 class LiveKitTokenService:
@@ -36,7 +37,7 @@ class LiveKitTokenService:
                 "livekit-api not installed; pip install -e '.[livekit]'",
             ) from exc
 
-        room_name = f"voxforge-{session_id}"
+        room_name = room_name_for_session(session_id)
         grants = VideoGrants(
             room_join=True,
             room=room_name,

@@ -100,6 +100,39 @@ mcp_servers_total = Counter(
     "MCP servers registered by discovery status",
     ["status"],
 )
+livekit_room_lifecycle_total = Counter(
+    "voxforge_livekit_room_lifecycle_total",
+    "LiveKit room lifecycle events",
+    ["event"],
+)
+livekit_participant_events_total = Counter(
+    "voxforge_livekit_participant_events_total",
+    "LiveKit participant connect/disconnect events",
+    ["event"],
+)
+livekit_barge_in_total = Counter(
+    "voxforge_livekit_barge_in_total",
+    "LiveKit barge-in interrupts triggered by participant audio",
+)
+livekit_reconnection_attempts_total = Counter(
+    "voxforge_livekit_reconnection_attempts_total",
+    "LiveKit session reconnection attempts",
+)
+livekit_dispatch_total = Counter(
+    "voxforge_livekit_dispatch_total",
+    "LiveKit agent dispatch attempts",
+    ["status"],
+)
+livekit_audio_frame_latency_seconds = Histogram(
+    "voxforge_livekit_audio_frame_latency_seconds",
+    "Ingress latency from frame receipt to pipeline queue",
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25),
+)
+livekit_streaming_latency_seconds = Histogram(
+    "voxforge_livekit_streaming_latency_seconds",
+    "Wall-clock duration of a pipeline listening turn",
+    buckets=(0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0),
+)
 regression_alerts_total = Counter(
     "voxforge_regression_alerts_total",
     "Regression alerts raised by dashboard alert engine",

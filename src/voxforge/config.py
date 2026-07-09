@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     livekit_url: str = ""
     livekit_api_key: str = ""
     livekit_api_secret: str = ""
+    livekit_agent_name: str = "voxforge-voice"
+    livekit_dispatch_enabled: bool = True
+    livekit_reconnect_grace_seconds: int = 30
 
     default_llm_model: str = "gpt-4.1-mini"
     default_tts_voice_id: str = "79a125e8-cd45-4c13-8a67-188112f4dd22"

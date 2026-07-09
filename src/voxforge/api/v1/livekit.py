@@ -4,8 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from voxforge.api.dependencies import get_livekit_service, get_session_manager, require_scope
+from voxforge.config import Settings, get_settings
 from voxforge.core.domain.auth import Principal
 from voxforge.core.exceptions import ProviderError, SessionNotFoundError
+from voxforge.infrastructure.livekit.dispatch_service import LiveKitDispatchService
 from voxforge.infrastructure.livekit.token_service import LiveKitTokenService
 from voxforge.modules.session_manager.application.service import SessionManager
 
@@ -31,6 +33,7 @@ async def create_livekit_token(
     principal: Principal = Depends(require_scope("sessions:write")),
     session_manager: SessionManager = Depends(get_session_manager),
     livekit: LiveKitTokenService = Depends(get_livekit_service),
+    settings: Settings = Depends(get_settings),
 ) -> LiveKitTokenResponse:
     if not livekit.enabled:
         raise HTTPException(status_code=503, detail="LiveKit is not configured")
@@ -48,5 +51,8 @@ async def create_livekit_token(
         )
     except ProviderError as exc:
         raise HTTPException(status_code=503, detail=exc.message) from exc
+
+    dispatch = LiveKitDispatchService(settings)
+    await dispatch.dispatch_agent(result["room_name"])
 
     return LiveKitTokenResponse(session_id=session_id, **result)
