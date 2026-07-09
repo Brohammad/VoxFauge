@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoxForge — Voice AI Infrastructure</title>
+  <link rel="stylesheet" href="/public/landing/styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <nav class="nav">
+      <span class="logo">VoxForge</span>
+      <div class="nav-links">
+        <a href="/demo">Live Demo</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/api/v1/docs">API</a>
+      </div>
+    </nav>
+    <div class="hero-content">
+      <p class="eyebrow">Production-grade Voice AI Infrastructure</p>
+      <h1>Build enterprise voice agents on a real platform — not a chatbot demo.</h1>
+      <p class="subtitle">
+        Modular monolith with voice pipeline orchestration, MCP tool routing, evaluation,
+        replay, observability, and WebRTC transport — designed for operators and builders.
+      </p>
+      <div class="cta-row">
+        <a class="btn primary" href="/demo">Try the demo</a>
+        <a class="btn secondary" href="/api/v1/docs">Explore the API</a>
+      </div>
+      <p class="cta-note">Experience the full pipeline in under one minute — no repository clone required.</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid">
+      <article>
+        <h2>Single voice pipeline</h2>
+        <p>WebSocket, programmatic onboarding, and LiveKit WebRTC all feed the same <code>VoicePipelineService</code>.</p>
+      </article>
+      <article>
+        <h2>MCP runtime discovery</h2>
+        <p>Tools are discovered at startup with health visibility — not hardcoded in application code.</p>
+      </article>
+      <article>
+        <h2>Evaluation &amp; replay</h2>
+        <p>Every turn is scored, traced, and replayable for regression analysis and operator trust.</p>
+      </article>
+      <article>
+        <h2>Operational maturity</h2>
+        <p>OpenTelemetry, Prometheus metrics, ADRs, CI hardening, and production deployment guides.</p>
+      </article>
+    </section>
+
+    <section class="stack">
+      <h2>Architecture at a glance</h2>
+      <pre>Client → Transport (WS / LiveKit) → Voice Pipeline → Agent Orchestrator → MCP → Evaluation → Replay</pre>
+    </section>
+  </main>
+
+  <footer>
+  <p>VoxForge — Voice AI Infrastructure Platform · <a href="/demo">Demo</a> · <a href="/dashboard">Dashboard</a></p>
+  </footer>
+</body>
+</html>

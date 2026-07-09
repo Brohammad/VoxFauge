@@ -1,0 +1,100 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b1020;
+  --panel: #121a2f;
+  --text: #e8eefc;
+  --muted: #9fb0d3;
+  --accent: #5b8cff;
+  --accent-2: #38d996;
+  --border: rgba(255, 255, 255, 0.08);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, #172554 0%, var(--bg) 45%);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.hero { padding: 2rem 1.5rem 4rem; max-width: 1100px; margin: 0 auto; }
+.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4rem;
+}
+.logo { font-weight: 700; letter-spacing: 0.04em; }
+.nav-links { display: flex; gap: 1.25rem; }
+
+.hero-content { max-width: 760px; }
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  color: var(--accent-2);
+}
+h1 { font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.15; margin: 0.75rem 0; }
+.subtitle { color: var(--muted); font-size: 1.1rem; }
+
+.cta-row { display: flex; gap: 1rem; flex-wrap: wrap; margin: 2rem 0 1rem; }
+.btn {
+  display: inline-block;
+  padding: 0.85rem 1.25rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+}
+.btn.primary { background: var(--accent); color: white; }
+.btn.secondary {
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
+}
+.cta-note { color: var(--muted); font-size: 0.95rem; }
+
+main { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+article {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.25rem;
+}
+article h2 { margin-top: 0; font-size: 1.05rem; }
+article p { color: var(--muted); margin-bottom: 0; }
+
+.stack {
+  margin-top: 2rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+.stack pre {
+  overflow-x: auto;
+  background: #0a0f1c;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+}
+
+footer {
+  border-top: 1px solid var(--border);
+  padding: 2rem 1.5rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+code {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.35rem;
+}

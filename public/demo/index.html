@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoxForge Demo</title>
+  <link rel="stylesheet" href="/public/demo/styles.css" />
+</head>
+<body>
+  <header>
+    <a href="/" class="back">← VoxForge</a>
+    <h1>Interactive Voice Pipeline Demo</h1>
+    <p>Runs the production <code>VoicePipelineService</code> path with mock providers — no API keys required.</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <button id="run-demo" class="btn">Run demo call</button>
+      <p id="status" class="status">Click to execute a scripted support call through STT → LLM → TTS → evaluation.</p>
+    </section>
+
+    <section class="panel results hidden" id="results">
+      <div class="metric-row">
+        <div><span class="label">Status</span><strong id="out-status">—</strong></div>
+        <div><span class="label">E2E latency</span><strong id="out-e2e">—</strong></div>
+        <div><span class="label">Session</span><strong id="out-session">—</strong></div>
+      </div>
+      <div class="transcript">
+        <h2>User</h2>
+        <p id="out-user"></p>
+        <h2>Assistant</h2>
+        <p id="out-assistant"></p>
+      </div>
+    </section>
+
+    <section class="panel secondary">
+      <h2>Explore further</h2>
+      <ul>
+        <li><a href="/dashboard">Operator dashboard</a> — log in with <code id="demo-creds">demo@voxforge.io</code></li>
+        <li><a href="/api/v1/docs">OpenAPI reference</a></li>
+        <li><a href="/examples/livekit">LiveKit WebRTC example</a> (requires LiveKit configuration)</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="/public/demo/app.js"></script>
+</body>
+</html>
