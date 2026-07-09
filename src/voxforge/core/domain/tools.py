@@ -16,6 +16,9 @@ class ToolDefinition(BaseModel):
     description: str
     parameters: dict = Field(default_factory=dict)
     source: str = "builtin"  # builtin | mcp
+    server_id: str | None = None
+    version: str | None = None
+    required_scopes: list[str] = Field(default_factory=list)
 
 
 class ToolResult(BaseModel):
