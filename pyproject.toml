@@ -62,7 +62,16 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
     "live: tests that require live API keys",
+    "postgres: tests requiring PostgreSQL with pgvector",
 ]
+
+[tool.coverage.run]
+source = ["src/voxforge"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
 
 [tool.ruff]
 target-version = "py312"
@@ -71,3 +80,6 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["E402"]
