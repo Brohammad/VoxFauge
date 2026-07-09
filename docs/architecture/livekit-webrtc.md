@@ -15,6 +15,9 @@ VoxForge supports WebRTC voice sessions via [LiveKit](https://livekit.io/) along
 LIVEKIT_URL=wss://your-project.livekit.cloud
 LIVEKIT_API_KEY=...
 LIVEKIT_API_SECRET=...
+LIVEKIT_AGENT_NAME=voxforge-voice
+LIVEKIT_DISPATCH_ENABLED=true
+LIVEKIT_RECONNECT_GRACE_SECONDS=30
 ```
 
 Install the optional dependency:
@@ -22,6 +25,15 @@ Install the optional dependency:
 ```bash
 pip install -e ".[livekit]"
 ```
+
+Run the agent worker (separate process from the API):
+
+```bash
+make livekit-worker
+```
+
+The worker bridges room audio into `VoicePipelineService` — see
+[livekit-integration.md](./livekit-integration.md) for the full architecture.
 
 ## API
 
@@ -46,7 +58,8 @@ POST /api/v1/livekit/sessions/{session_id}/token
 }
 ```
 
-Returns `token`, `room_name`, and `livekit_url`.
+Returns `token`, `room_name`, and `livekit_url`. When dispatch is enabled, the API also
+requests a LiveKit agent job for the room (failures are logged; token issuance still succeeds).
 
 Rooms are named `voxforge-{session_id}` with publish/subscribe grants for the participant.
 

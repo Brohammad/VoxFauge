@@ -6,7 +6,8 @@ Browser demo for VoxForge WebRTC voice sessions using the [LiveKit JavaScript SD
 
 1. VoxForge API running (`docker compose up -d`)
 2. LiveKit Cloud project (or self-hosted LiveKit server)
-3. JWT access token from `POST /api/v1/auth/login`
+3. LiveKit agent worker: `make livekit-worker`
+4. JWT access token from `POST /api/v1/auth/login`
 
 Set in `.env`:
 
@@ -14,6 +15,7 @@ Set in `.env`:
 LIVEKIT_URL=wss://your-project.livekit.cloud
 LIVEKIT_API_KEY=...
 LIVEKIT_API_SECRET=...
+LIVEKIT_AGENT_NAME=voxforge-voice
 ```
 
 ## Usage
@@ -27,25 +29,28 @@ Open http://localhost:8000/examples/livekit
 The client will:
 
 - Create a `webrtc` transport session via the VoxForge API
-- Fetch a LiveKit participant token
+- Fetch a LiveKit participant token (and dispatch the agent worker)
 - Connect to the room and publish your microphone
-- Play audio from remote participants (e.g. a future VoxForge agent worker)
+- Hear agent audio published by the VoxForge LiveKit worker
 
 ## Flow
 
 ```
-Browser                    VoxForge API              LiveKit
-   | POST /sessions/webrtc      |                        |
-   |--------------------------->|                        |
-   | POST /livekit/.../token    |                        |
-   |--------------------------->|                        |
-   | connect(url, token)        |                        |
-   |----------------------------------------------------->|
-   | publish mic track          |                        |
-   |----------------------------------------------------->|
+Browser          VoxForge API       LiveKit SFU       LiveKit Worker
+   | POST /sessions/webrtc  |              |                  |
+   |---------------------->|              |                  |
+   | POST /livekit/token    | dispatch     |                  |
+   |---------------------->|------------->| job for room     |
+   | connect(url, token)    |              |                  |
+   |--------------------------------------->|                  |
+   | publish mic            |              | subscribe audio  |
+   |--------------------------------------->|----------------->|
+   |                        |              |    VoicePipeline |
+   |<-------------------------------------- agent audio track |
 ```
 
 ## Notes
 
-- Token generation is implemented server-side; a LiveKit **agent worker** that bridges room audio into the VoxForge voice pipeline is the next integration step.
-- For WebSocket voice (fully wired today), use `/api/v1/ws/voice` instead.
+- The worker bridges room audio into `VoicePipelineService` (same stack as WebSocket voice).
+- For WebSocket voice, use `/api/v1/ws/voice` instead.
+- See `docs/architecture/livekit-integration.md` for failure modes and observability.
