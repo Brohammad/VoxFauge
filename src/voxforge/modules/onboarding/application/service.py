@@ -1,28 +1,29 @@
+import time
 from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from voxforge.core.domain.entities import TransportType, TurnMetrics
-from voxforge.core.domain.evaluation import TurnEvaluationInput
+from voxforge.core.domain.entities import TransportType
 from voxforge.infrastructure.db.models import OnboardingRunModel, SupportTemplateModel
-from voxforge.infrastructure.db.outcome_repository import OutcomeRepository
-from voxforge.infrastructure.observability.metrics import onboarding_steps_total
-from voxforge.modules.evaluation.application.service import EvaluationEngine
-from voxforge.modules.outcomes.application.service import OutcomeExtractionService
+from voxforge.infrastructure.observability.logging import get_logger
+from voxforge.infrastructure.observability.metrics import (
+    onboarding_sample_call_duration_seconds,
+    onboarding_steps_total,
+)
+from voxforge.infrastructure.observability.telemetry import get_tracer
+from voxforge.modules.onboarding.application.sample_scripts import get_default_sample_script
+from voxforge.modules.onboarding.ports.pipeline_runner import OnboardingPipelineRunner
 from voxforge.modules.session_manager.application.service import SessionManager
+
+logger = get_logger(__name__)
+_tracer = get_tracer(__name__)
 
 
 class OnboardingService:
-    def __init__(
-        self,
-        db: AsyncSession,
-        evaluation_engine: EvaluationEngine | None = None,
-    ) -> None:
+    def __init__(self, db: AsyncSession) -> None:
         self._db = db
-        self._outcomes = OutcomeExtractionService(OutcomeRepository(db))
-        self._evaluation = evaluation_engine
 
     async def start(self, org_id: UUID, user_id: UUID | None) -> OnboardingRunModel:
         run = OnboardingRunModel(
@@ -52,73 +53,81 @@ class OnboardingService:
         org_id: UUID,
         user_id: UUID | None,
         session_manager: SessionManager,
+        pipeline_runner: OnboardingPipelineRunner,
     ) -> OnboardingRunModel:
         run = await self._latest_run(org_id) or await self.start(org_id, user_id)
+        script = get_default_sample_script()
+        wall_start = time.monotonic()
 
-        session = await session_manager.create_session(
-            transport_type=TransportType.WEBSOCKET,
-            config={"template_slug": "customer-support-deflection", "sample_call": True},
-            org_id=org_id,
-            created_by_user_id=user_id,
-        )
-        await session_manager.save_user_message(
-            session.id,
-            "Hi, I need help changing the billing contact on my account.",
-            metadata={"intent": "billing_contact_change"},
-        )
-        await session_manager.save_assistant_message(
-            session.id,
-            "I can help with that. I verified your account and updated the billing contact.",
-            metadata={"task_success": True},
-        )
-        await session_manager.save_turn_metrics(
-            session.id,
-            metrics=TurnMetrics(
-                stt_ms=120.0,
-                llm_first_token_ms=300.0,
-                tts_first_byte_ms=180.0,
-                e2e_ms=1450.0,
-            ),
-        )
-        await session_manager.end_session(session.id, reason="onboarding_sample")
+        with _tracer.start_as_current_span("onboarding.sample_call") as span:
+            span.set_attribute("voxforge.org_id", str(org_id))
+            span.set_attribute("voxforge.script_id", script.script_id)
 
-        user_transcript = "Hi, I need help changing the billing contact on my account."
-        assistant_response = (
-            "I can help with that. I verified your account "
-            "and updated the billing contact."
-        )
+            session = await session_manager.create_session(
+                transport_type=TransportType.WEBSOCKET,
+                config={
+                    "template_slug": "customer-support-deflection",
+                    "sample_call": True,
+                    "script_id": script.script_id,
+                },
+                org_id=org_id,
+                created_by_user_id=user_id,
+            )
+            span.set_attribute("voxforge.session_id", str(session.id))
 
-        if self._evaluation is not None:
-            await self._evaluation.evaluate_turn(
-                TurnEvaluationInput(
+            try:
+                metrics = await pipeline_runner.run_scripted_turn(
                     session_id=session.id,
                     org_id=org_id,
-                    user_transcript=user_transcript,
-                    assistant_response=assistant_response,
-                    stt_ms=120.0,
-                    llm_first_token_ms=300.0,
-                    tts_first_byte_ms=180.0,
-                    e2e_ms=1450.0,
+                    transcript=script.user_transcript,
+                    user_metadata=script.user_metadata,
                 )
-            )
+                await session_manager.end_session(session.id, reason="onboarding_sample")
 
-        await self._outcomes.record_outcome(
-            org_id=org_id,
-            session_id=session.id,
-            user_transcript=user_transcript,
-            assistant_response=assistant_response,
-            interrupted=False,
-            resolution_time_seconds=95.0,
-            user_metadata={"intent": "billing_contact_change"},
-            assistant_metadata={"task_success": True},
-        )
-        run.status = "test_call_passed"
-        run.test_session_id = session.id
-        run.completed_at = datetime.now(UTC)
-        run.metadata_ = {**(run.metadata_ or {}), "sample_call": "passed"}
-        await self._db.flush()
-        onboarding_steps_total.labels(step="run_sample_call", status="test_call_passed").inc()
-        return run
+                run.status = "test_call_passed"
+                run.test_session_id = session.id
+                run.completed_at = datetime.now(UTC)
+                run.metadata_ = {
+                    **(run.metadata_ or {}),
+                    "sample_call": "passed",
+                    "script_id": script.script_id,
+                    "e2e_ms": metrics.e2e_ms,
+                }
+                onboarding_steps_total.labels(
+                    step="run_sample_call", status="test_call_passed"
+                ).inc()
+                logger.info(
+                    "onboarding_sample_call_passed",
+                    org_id=str(org_id),
+                    session_id=str(session.id),
+                    script_id=script.script_id,
+                    e2e_ms=metrics.e2e_ms,
+                )
+            except Exception as exc:
+                span.record_exception(exc)
+                run.status = "test_call_failed"
+                run.metadata_ = {
+                    **(run.metadata_ or {}),
+                    "sample_call": "failed",
+                    "script_id": script.script_id,
+                    "error": str(exc),
+                }
+                onboarding_steps_total.labels(
+                    step="run_sample_call", status="test_call_failed"
+                ).inc()
+                logger.error(
+                    "onboarding_sample_call_failed",
+                    org_id=str(org_id),
+                    session_id=str(session.id),
+                    script_id=script.script_id,
+                    error=str(exc),
+                )
+            finally:
+                duration = time.monotonic() - wall_start
+                onboarding_sample_call_duration_seconds.observe(duration)
+
+            await self._db.flush()
+            return run
 
     async def status(self, org_id: UUID) -> OnboardingRunModel | None:
         return await self._latest_run(org_id)

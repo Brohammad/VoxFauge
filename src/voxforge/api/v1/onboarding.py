@@ -4,11 +4,13 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from voxforge.api.dependencies import (
+    get_onboarding_pipeline_runner,
     get_onboarding_service,
     get_session_manager,
     require_scope,
 )
 from voxforge.core.domain.auth import Principal
+from voxforge.infrastructure.voice.programmatic_runner import ProgrammaticPipelineRunner
 from voxforge.modules.onboarding.application.service import OnboardingService
 from voxforge.modules.session_manager.application.service import SessionManager
 
@@ -57,11 +59,13 @@ async def onboarding_run_sample_call(
     principal: Principal = Depends(require_scope("sessions:write")),
     onboarding: OnboardingService = Depends(get_onboarding_service),
     session_manager: SessionManager = Depends(get_session_manager),
+    pipeline_runner: ProgrammaticPipelineRunner = Depends(get_onboarding_pipeline_runner),
 ) -> OnboardingRunResponse:
     run = await onboarding.run_sample_call(
         principal.org_id,
         principal.user_id,
         session_manager,
+        pipeline_runner,
     )
     await onboarding.commit()
     return _run_response(run)

@@ -26,7 +26,14 @@ class MockLLMProvider:
         model: str,
     ) -> AsyncIterator[TokenEvent]:
         last_user = next((m.content for m in reversed(messages) if m.role.value == "user"), "")
-        reply = f"Mock response to: {last_user[:80]}"
+        lower_user = last_user.lower()
+        if "billing contact" in lower_user:
+            reply = (
+                "I can help with that. I verified your account "
+                "and updated the billing contact."
+            )
+        else:
+            reply = f"Mock response to: {last_user[:80]}"
         yield TokenEvent(text=reply, is_final=False)
         yield TokenEvent(text="", is_final=True)
 

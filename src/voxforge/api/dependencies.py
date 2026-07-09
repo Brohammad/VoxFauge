@@ -26,6 +26,7 @@ from voxforge.infrastructure.providers.llm.openai import OpenAILLMProvider
 from voxforge.infrastructure.redis.client import get_redis
 from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
 from voxforge.infrastructure.tools.mcp_adapter import MCPToolAdapter
+from voxforge.infrastructure.voice.programmatic_runner import ProgrammaticPipelineRunner
 from voxforge.modules.agent_config.application.service import AgentConfigService
 from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
 from voxforge.modules.alerts.application.service import AlertService
@@ -178,9 +179,8 @@ def get_dashboard_service(
 
 def get_onboarding_service(
     db: AsyncSession = Depends(get_db_session),
-    evaluation_engine: EvaluationEngine | None = Depends(get_evaluation_engine),
 ) -> OnboardingService:
-    return OnboardingService(db, evaluation_engine)
+    return OnboardingService(db)
 
 
 def get_outcome_service(
@@ -236,3 +236,9 @@ def get_pipeline(
         evaluation_engine,
         outcome_service,
     )
+
+
+def get_onboarding_pipeline_runner(
+    pipeline: VoicePipelineService = Depends(get_pipeline),
+) -> ProgrammaticPipelineRunner:
+    return ProgrammaticPipelineRunner(pipeline)
