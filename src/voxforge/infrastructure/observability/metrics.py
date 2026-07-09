@@ -90,6 +90,16 @@ onboarding_sample_call_duration_seconds = Histogram(
     "Wall-clock duration of onboarding sample call execution",
     buckets=(0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 5.0),
 )
+mcp_discovery_duration_seconds = Histogram(
+    "voxforge_mcp_discovery_duration_seconds",
+    "MCP runtime discovery duration at startup",
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0),
+)
+mcp_servers_total = Counter(
+    "voxforge_mcp_servers_total",
+    "MCP servers registered by discovery status",
+    ["status"],
+)
 regression_alerts_total = Counter(
     "voxforge_regression_alerts_total",
     "Regression alerts raised by dashboard alert engine",

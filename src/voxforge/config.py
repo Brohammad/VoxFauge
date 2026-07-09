@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     tool_timeout_seconds: int = 30
     max_tool_iterations: int = 5
     mcp_servers_config: str = ""  # JSON array of MCP server configs
+    mcp_discovery_enabled: bool = True
+    mcp_discovery_timeout_ms: float = 5000.0
+    mcp_startup_discover: bool = True
 
     evaluation_enabled: bool = True
     evaluation_e2e_target_ms: float = 2000.0
