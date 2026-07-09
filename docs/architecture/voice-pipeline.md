@@ -117,6 +117,7 @@ sequenceDiagram
 | TTS first audio byte | < 200ms after first sentence |
 | End-to-end | < 1.5s |
 
-## Future: LiveKit/WebRTC
+## LiveKit/WebRTC
 
-The `VoiceGateway` transport is designed to be swappable. LiveKit integration will replace WebSocket binary frames with WebRTC audio tracks while reusing the same pipeline orchestrator.
+LiveKit is implemented as a transport adapter into the same `VoicePipelineService`.
+See [livekit-integration.md](./livekit-integration.md) for lifecycle, failure modes, and worker operations.
