@@ -19,6 +19,7 @@ from voxforge.infrastructure.observability.metrics import (
     turns_completed,
     turns_interrupted,
 )
+from voxforge.infrastructure.observability.telemetry import get_tracer
 from voxforge.infrastructure.providers.tts.cartesia import token_stream_to_sentences
 from voxforge.modules.session_manager.application.service import SessionManager
 
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from voxforge.modules.outcomes.application.service import OutcomeExtractionService
 
 logger = get_logger(__name__)
+_tracer = get_tracer(__name__)
 
 
 @dataclass
@@ -123,6 +125,48 @@ class VoicePipelineService:
             logger.error("pipeline_listening_error", session_id=str(session_id), error=str(exc))
             await self._maybe_await(callbacks.on_error("pipeline_error", str(exc)))
 
+    async def run_text_turn(
+        self,
+        session_id: UUID,
+        transcript: str,
+        callbacks: PipelineCallbacks | None = None,
+        *,
+        user_metadata: dict | None = None,
+        confidence: float | None = 1.0,
+    ) -> TurnMetrics:
+        """Run a single turn from text input, skipping STT (programmatic / onboarding)."""
+        effective_callbacks = callbacks or PipelineCallbacks()
+        turn_start = time.monotonic()
+
+        with _tracer.start_as_current_span("voice_pipeline.run_text_turn") as span:
+            span.set_attribute("voxforge.session_id", str(session_id))
+            span.set_attribute("voxforge.transcript_length", len(transcript))
+            span.set_attribute("voxforge.mode", "programmatic")
+            try:
+                metrics = await self._process_turn(
+                    session_id,
+                    transcript,
+                    effective_callbacks,
+                    turn_start=turn_start,
+                    stt_ms=0.0,
+                    confidence=confidence,
+                    user_metadata_extra=user_metadata,
+                )
+                logger.info(
+                    "pipeline_text_turn_completed",
+                    session_id=str(session_id),
+                    e2e_ms=metrics.e2e_ms,
+                )
+                return metrics
+            except Exception as exc:
+                span.record_exception(exc)
+                logger.error(
+                    "pipeline_text_turn_failed",
+                    session_id=str(session_id),
+                    error=str(exc),
+                )
+                raise
+
     async def _process_turn(
         self,
         session_id: UUID,
@@ -132,12 +176,15 @@ class VoicePipelineService:
         turn_start: float,
         stt_ms: float | None,
         confidence: float | None,
-    ) -> None:
+        user_metadata_extra: dict | None = None,
+    ) -> TurnMetrics:
         metrics = TurnMetrics(stt_ms=stt_ms)
         self._interrupt_event = asyncio.Event()
 
         await self._sessions.update_phase(session_id, SessionPhase.PROCESSING)
-        user_metadata = {"confidence": confidence}
+        user_metadata: dict = {"confidence": confidence}
+        if user_metadata_extra:
+            user_metadata.update(user_metadata_extra)
         user_message = await self._sessions.save_user_message(
             session_id, transcript, metadata=user_metadata
         )
@@ -286,6 +333,7 @@ class VoicePipelineService:
 
         await self._sessions.clear_interrupt(session_id)
         await self._sessions.update_phase(session_id, SessionPhase.LISTENING)
+        return metrics
 
     async def interrupt(self, session_id: UUID) -> None:
         await self._sessions.set_interrupt(session_id)

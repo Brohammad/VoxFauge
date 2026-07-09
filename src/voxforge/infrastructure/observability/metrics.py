@@ -85,6 +85,11 @@ onboarding_steps_total = Counter(
     "Onboarding funnel step transitions",
     ["step", "status"],
 )
+onboarding_sample_call_duration_seconds = Histogram(
+    "voxforge_onboarding_sample_call_duration_seconds",
+    "Wall-clock duration of onboarding sample call execution",
+    buckets=(0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 5.0),
+)
 regression_alerts_total = Counter(
     "voxforge_regression_alerts_total",
     "Regression alerts raised by dashboard alert engine",
