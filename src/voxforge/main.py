@@ -13,6 +13,7 @@ from voxforge.infrastructure.db.session import close_db, init_db
 from voxforge.infrastructure.observability.logging import setup_logging
 from voxforge.infrastructure.observability.telemetry import setup_telemetry
 from voxforge.infrastructure.redis.client import close_redis, init_redis
+from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
 
 DASHBOARD_DIR = Path(__file__).resolve().parents[2] / "dashboard"
 LIVEKIT_EXAMPLE_DIR = Path(__file__).resolve().parents[2] / "examples" / "livekit-client"
@@ -25,6 +26,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_telemetry(settings)
     await init_db(settings.database_url)
     await init_redis(settings.redis_url)
+
+    mcp_registry: MCPRuntimeRegistry | None = None
+    if settings.tools_enabled and settings.mcp_servers_config.strip():
+        mcp_registry = MCPRuntimeRegistry(settings)
+        if settings.mcp_startup_discover:
+            await mcp_registry.discover_all()
+    app.state.mcp_registry = mcp_registry
+
     yield
     await close_redis()
     await close_db()

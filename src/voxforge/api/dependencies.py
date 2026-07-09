@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Security
+from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,7 +25,7 @@ from voxforge.infrastructure.providers.factory import (
 from voxforge.infrastructure.providers.llm.openai import OpenAILLMProvider
 from voxforge.infrastructure.redis.client import get_redis
 from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
-from voxforge.infrastructure.tools.mcp_adapter import MCPToolAdapter
+from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
 from voxforge.infrastructure.voice.programmatic_runner import ProgrammaticPipelineRunner
 from voxforge.modules.agent_config.application.service import AgentConfigService
 from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
@@ -149,14 +149,18 @@ def get_memory_service(
     return MemoryService(store, embedder, settings, llm)
 
 
+def get_mcp_registry(request: Request) -> MCPRuntimeRegistry | None:
+    return getattr(request.app.state, "mcp_registry", None)
+
+
 def get_tool_router(
     db: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
+    mcp_registry: MCPRuntimeRegistry | None = Depends(get_mcp_registry),
 ) -> ToolRouter | None:
     if not settings.tools_enabled:
         return None
-    mcp = MCPToolAdapter(settings.mcp_servers_config) if settings.mcp_servers_config else None
-    registry = ToolRegistry(mcp)
+    registry = ToolRegistry(mcp_registry=mcp_registry)
     repo = ToolCallRepository(db)
     return ToolRouter(registry, settings, repo)
 

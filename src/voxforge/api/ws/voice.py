@@ -26,7 +26,7 @@ from voxforge.infrastructure.providers.factory import (
 )
 from voxforge.infrastructure.redis.client import get_redis
 from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
-from voxforge.infrastructure.tools.mcp_adapter import MCPToolAdapter
+from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
 from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
 from voxforge.modules.auth.application.service import AuthService
 from voxforge.modules.evaluation.application.service import EvaluationEngine
@@ -81,13 +81,11 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 )
             tool_router: ToolRouter | None = None
             if settings.tools_enabled:
-                mcp = (
-                    MCPToolAdapter(settings.mcp_servers_config)
-                    if settings.mcp_servers_config
-                    else None
+                mcp_registry: MCPRuntimeRegistry | None = getattr(
+                    websocket.app.state, "mcp_registry", None
                 )
                 tool_router = ToolRouter(
-                    ToolRegistry(mcp),
+                    ToolRegistry(mcp_registry=mcp_registry),
                     settings,
                     ToolCallRepository(db_session),
                 )
