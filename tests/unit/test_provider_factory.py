@@ -33,3 +33,19 @@ async def test_mock_llm_streams_response():
     messages = [ChatMessageLike(role=MessageRole.USER, content="Hello")]
     tokens = [event.text async for event in llm.generate_stream(messages, model="mock")]
     assert any("Mock response" in t for t in tokens)
+
+
+@pytest.mark.asyncio
+async def test_mock_llm_billing_contact_script():
+    from voxforge.core.domain.entities import MessageRole
+    from voxforge.modules.memory.application.context_builder import ChatMessageLike
+
+    llm = MockLLMProvider()
+    messages = [
+        ChatMessageLike(
+            role=MessageRole.USER,
+            content="Hi, I need help changing the billing contact on my account.",
+        )
+    ]
+    tokens = [event.text async for event in llm.generate_stream(messages, model="mock")]
+    assert any("updated the billing contact" in t for t in tokens)
