@@ -80,6 +80,11 @@ async def test_saml_connection_crud_scaffold(auth_client):
     begin_payload = begin_login_resp.json()
     assert begin_payload["status"] == "redirect"
     assert begin_payload["connection_id"] == connection_id
+    assert begin_payload["redirect_url"].startswith("https://idp.example.com/sso")
+    assert "SAMLRequest=" in begin_payload["redirect_url"]
+    assert begin_payload["binding"] == "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+    assert begin_payload["saml_request"]
+    assert begin_payload["relay_state"] == f"org:{org_id}:connection:{connection_id}"
 
     metadata_resp = await auth_client.get(
         f"/api/v1/orgs/{org_id}/sso/saml/{connection_id}/metadata",

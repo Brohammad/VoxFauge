@@ -1,6 +1,9 @@
 import base64
+import secrets
 import xml.etree.ElementTree as ET
+import zlib
 from datetime import UTC, datetime, timedelta
+from urllib.parse import quote_plus, urlencode, urlparse, urlunparse
 from xml.etree.ElementTree import Element
 
 from cryptography.x509 import load_pem_x509_certificate
@@ -9,7 +12,7 @@ from signxml import XMLVerifier
 from signxml.exceptions import InvalidSignature
 
 from voxforge.core.domain.auth import OrgRole
-from voxforge.core.domain.sso import SamlAssertion, SamlConnection
+from voxforge.core.domain.sso import SamlAssertion, SamlConnection, SamlLoginRedirect
 from voxforge.core.exceptions import SamlAssertionError
 
 SAML_NS = {
@@ -17,6 +20,8 @@ SAML_NS = {
     "saml": "urn:oasis:names:tc:SAML:2.0:assertion",
 }
 DS_NS = "http://www.w3.org/2000/09/xmldsig#"
+HTTP_REDIRECT_BINDING = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+HTTP_POST_BINDING = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
 
 EMAIL_ATTRIBUTE_NAMES = {
     "email",
@@ -131,9 +136,56 @@ def build_sp_metadata(connection: SamlConnection) -> str:
 <EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="{connection.sp_entity_id}">
   <SPSSODescriptor AuthnRequestsSigned="false" WantAssertionsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
     <NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</NameIDFormat>
-    <AssertionConsumerService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="{connection.acs_url}" index="1"/>
+    <AssertionConsumerService Binding="{HTTP_POST_BINDING}" Location="{connection.acs_url}" index="1"/>
   </SPSSODescriptor>
 </EntityDescriptor>"""
+
+
+def build_authn_request_xml(
+    connection: SamlConnection,
+    *,
+    request_id: str,
+    issue_instant: datetime | None = None,
+) -> str:
+    issued_at = (issue_instant or datetime.now(UTC)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="{request_id}" Version="2.0" IssueInstant="{issued_at}" Destination="{connection.idp_sso_url}" AssertionConsumerServiceURL="{connection.acs_url}" ProtocolBinding="{HTTP_POST_BINDING}">
+  <saml:Issuer>{connection.sp_entity_id}</saml:Issuer>
+  <samlp:NameIDPolicy Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress" AllowCreate="true"/>
+</samlp:AuthnRequest>"""
+
+
+def encode_saml_redirect_binding(message: str) -> str:
+    compressor = zlib.compressobj(level=9, method=zlib.DEFLATED, wbits=-15)
+    compressed = compressor.compress(message.encode("utf-8")) + compressor.flush()
+    return base64.b64encode(compressed).decode("ascii")
+
+
+def build_sp_initiated_login_redirect(
+    connection: SamlConnection,
+    *,
+    relay_state: str,
+    request_id: str | None = None,
+) -> SamlLoginRedirect:
+    authn_request_id = request_id or f"_{secrets.token_hex(16)}"
+    authn_request_xml = build_authn_request_xml(connection, request_id=authn_request_id)
+    encoded_request = encode_saml_redirect_binding(authn_request_xml)
+    query = urlencode({"SAMLRequest": encoded_request, "RelayState": relay_state}, quote_via=quote_plus)
+    redirect_url = _append_query(connection.idp_sso_url, query)
+    return SamlLoginRedirect(
+        connection_id=connection.id,
+        sso_url=connection.idp_sso_url,
+        redirect_url=redirect_url,
+        relay_state=relay_state,
+        binding=HTTP_REDIRECT_BINDING,
+        saml_request=encoded_request,
+    )
+
+
+def _append_query(url: str, query: str) -> str:
+    parsed = urlparse(url)
+    merged_query = f"{parsed.query}&{query}" if parsed.query else query
+    return urlunparse(parsed._replace(query=merged_query))
 
 
 def _verify_signature(xml: str, idp_x509_cert: str) -> None:

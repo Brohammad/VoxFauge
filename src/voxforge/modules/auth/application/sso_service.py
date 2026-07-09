@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from voxforge.config import Settings
 from voxforge.core.domain.auth import OrgRole, Principal, TokenPair
-from voxforge.core.domain.sso import SamlConnection, SamlConnectionStatus, SamlProviderType
+from voxforge.core.domain.sso import SamlConnection, SamlConnectionStatus, SamlLoginRedirect, SamlProviderType
 from voxforge.core.exceptions import ForbiddenError, SamlAssertionError
 from voxforge.infrastructure.db.auth_repositories import (
     AuditLogRepository,
@@ -15,6 +15,7 @@ from voxforge.infrastructure.db.auth_repositories import (
     UserRepository,
 )
 from voxforge.infrastructure.security.saml import (
+    build_sp_initiated_login_redirect,
     build_sp_metadata,
     parse_saml_assertion,
     resolve_role_from_mapping,
@@ -132,17 +133,22 @@ class SamlConnectionService:
             raise ForbiddenError("Access denied for this organization")
         return build_sp_metadata(connection)
 
-    async def begin_login(self, *, org_id: UUID, connection_id: UUID, actor: Principal) -> dict:
+    async def begin_login(
+        self, *, org_id: UUID, connection_id: UUID, actor: Principal
+    ) -> SamlLoginRedirect:
         self._require_org_scope(actor, org_id, "orgs:read")
         connection = await self._require_active_connection(org_id=org_id, connection_id=connection_id)
-        return {
-            "connection_id": str(connection.id),
-            "sso_url": connection.idp_sso_url,
-            "sp_entity_id": connection.sp_entity_id,
-            "acs_url": connection.acs_url,
-            "relay_state": f"org:{org_id}:connection:{connection.id}",
-            "status": "redirect",
-        }
+        relay_state = f"org:{org_id}:connection:{connection.id}"
+        redirect = build_sp_initiated_login_redirect(connection, relay_state=relay_state)
+        await self._audit.log(
+            action="sso.saml.login_initiated",
+            resource_type="saml_connection",
+            org_id=org_id,
+            user_id=actor.user_id,
+            resource_id=str(connection.id),
+            metadata={"relay_state": relay_state, "binding": redirect.binding},
+        )
+        return redirect
 
     async def consume_acs(
         self,

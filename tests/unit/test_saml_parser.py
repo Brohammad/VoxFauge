@@ -1,5 +1,7 @@
 import base64
+import zlib
 from datetime import UTC, datetime
+from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 import pytest
@@ -13,7 +15,11 @@ from voxforge.core.domain.sso import (
 )
 from voxforge.core.exceptions import SamlAssertionError
 from voxforge.infrastructure.security.saml import (
+    HTTP_REDIRECT_BINDING,
+    build_authn_request_xml,
+    build_sp_initiated_login_redirect,
     build_sp_metadata,
+    encode_saml_redirect_binding,
     parse_saml_assertion,
     resolve_role_from_mapping,
     validate_saml_response,
@@ -112,3 +118,34 @@ def test_build_sp_metadata_contains_entity_and_acs():
     metadata = build_sp_metadata(_connection())
     assert 'entityID="voxforge-sp"' in metadata
     assert 'Location="https://voxforge.example.com/acs"' in metadata
+
+
+def test_build_authn_request_xml_contains_sp_and_acs():
+    connection = _connection()
+    xml = build_authn_request_xml(connection, request_id="_request123")
+    assert "AuthnRequest" in xml
+    assert connection.sp_entity_id in xml
+    assert connection.acs_url in xml
+    assert connection.idp_sso_url in xml
+
+
+def test_encode_saml_redirect_binding_roundtrip():
+    xml = build_authn_request_xml(_connection(), request_id="_request123")
+    encoded = encode_saml_redirect_binding(xml)
+    decoded = zlib.decompress(base64.b64decode(encoded), -15).decode("utf-8")
+    assert decoded == xml
+
+
+def test_build_sp_initiated_login_redirect_url():
+    connection = _connection()
+    relay_state = "org:abc:connection:def"
+    redirect = build_sp_initiated_login_redirect(connection, relay_state=relay_state)
+    assert redirect.binding == HTTP_REDIRECT_BINDING
+    assert redirect.relay_state == relay_state
+    assert redirect.redirect_url.startswith(connection.idp_sso_url)
+    assert "SAMLRequest=" in redirect.redirect_url
+    assert "RelayState=" in redirect.redirect_url
+    params = parse_qs(urlparse(redirect.redirect_url).query)
+    decoded = zlib.decompress(base64.b64decode(params["SAMLRequest"][0]), -15).decode("utf-8")
+    assert "AuthnRequest" in decoded
+    assert connection.sp_entity_id in decoded

@@ -26,6 +26,16 @@ class SamlAssertion(BaseModel):
     groups: list[str] = Field(default_factory=list)
 
 
+class SamlLoginRedirect(BaseModel):
+    connection_id: UUID
+    sso_url: str
+    redirect_url: str
+    relay_state: str
+    binding: str
+    saml_request: str
+    status: str = "redirect"
+
+
 class SamlConnection(BaseModel):
     id: UUID
     org_id: UUID

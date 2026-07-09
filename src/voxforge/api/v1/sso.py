@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from voxforge.api.dependencies import get_current_principal, get_saml_connection_service
 from voxforge.core.domain.auth import OrgRole, Principal, TokenPair
-from voxforge.core.domain.sso import SamlConnection, SamlConnectionStatus, SamlProviderType
+from voxforge.core.domain.sso import SamlConnection, SamlConnectionStatus, SamlLoginRedirect, SamlProviderType
 from voxforge.core.exceptions import ForbiddenError, SamlAssertionError, SamlConnectionNotFoundError
 from voxforge.modules.auth.application.sso_service import SamlConnectionService
 
@@ -41,6 +41,28 @@ class SamlAcsResponse(BaseModel):
     org_id: str
     role: str
     tokens: TokenPair
+
+
+class SamlLoginResponse(BaseModel):
+    status: str
+    connection_id: UUID
+    sso_url: str
+    redirect_url: str
+    relay_state: str
+    binding: str
+    saml_request: str
+
+    @classmethod
+    def from_entity(cls, redirect: SamlLoginRedirect) -> "SamlLoginResponse":
+        return cls(
+            status=redirect.status,
+            connection_id=redirect.connection_id,
+            sso_url=redirect.sso_url,
+            redirect_url=redirect.redirect_url,
+            relay_state=redirect.relay_state,
+            binding=redirect.binding,
+            saml_request=redirect.saml_request,
+        )
 
 
 class SamlConnectionResponse(BaseModel):
@@ -180,23 +202,27 @@ async def get_saml_metadata(
     return Response(content=metadata, media_type="application/samlmetadata+xml")
 
 
-@router.get("/{connection_id}/login")
+@router.get("/{connection_id}/login", response_model=SamlLoginResponse)
 async def begin_saml_login(
     org_id: UUID,
     connection_id: UUID,
     principal: Principal = Depends(get_current_principal),
     service: SamlConnectionService = Depends(get_saml_connection_service),
-) -> dict:
+) -> SamlLoginResponse:
     try:
-        return await service.begin_login(
+        redirect = await service.begin_login(
             org_id=org_id,
             connection_id=connection_id,
             actor=principal,
         )
+        await service.commit()
     except ForbiddenError as exc:
         raise HTTPException(status_code=403, detail=exc.message) from exc
     except SamlConnectionNotFoundError as exc:
         raise HTTPException(status_code=404, detail=exc.message) from exc
+    except SamlAssertionError as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
+    return SamlLoginResponse.from_entity(redirect)
 
 
 @router.post("/acs", response_model=SamlAcsResponse)
