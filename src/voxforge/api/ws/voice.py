@@ -11,34 +11,19 @@ from voxforge.core.domain.entities import TransportType
 from voxforge.core.domain.events import AudioChunk, TranscriptEvent
 from voxforge.core.events.bus import get_event_bus
 from voxforge.core.exceptions import ForbiddenError, SessionNotFoundError, UnauthorizedError
-from voxforge.infrastructure.db.evaluation_repository import EvaluationRepository
-from voxforge.infrastructure.db.memory_repository import MemoryRepository
-from voxforge.infrastructure.db.outcome_repository import OutcomeRepository
 from voxforge.infrastructure.db.session import get_engine
-from voxforge.infrastructure.db.tool_repository import ToolCallRepository
 from voxforge.infrastructure.observability.logging import get_logger
 from voxforge.infrastructure.observability.metrics import active_sessions, ws_connections
-from voxforge.infrastructure.providers.embeddings.openai import OpenAIEmbeddingProvider
-from voxforge.infrastructure.providers.factory import (
-    create_llm_provider,
-    create_stt_provider,
-    create_tts_provider,
-)
 from voxforge.infrastructure.redis.client import get_redis
 from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
 from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
-from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
 from voxforge.modules.auth.application.service import AuthService
-from voxforge.modules.evaluation.application.service import EvaluationEngine
-from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
-from voxforge.modules.mcp_tool_router.application.router import ToolRouter
-from voxforge.modules.memory.application.service import MemoryService
-from voxforge.modules.outcomes.application.service import OutcomeExtractionService
 from voxforge.modules.session_manager.application.service import SessionManager
 from voxforge.modules.voice_gateway.application.pipeline import (
     PipelineCallbacks,
     VoicePipelineService,
 )
+from voxforge.modules.voice_gateway.application.pipeline_factory import build_voice_pipeline_bundle
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -65,50 +50,19 @@ async def voice_websocket(websocket: WebSocket) -> None:
             )
             event_bus = get_event_bus()
             auth_service = AuthService(db_session, settings)
-            session_manager = SessionManager(db_session, state_store, event_bus, settings)
-            stt = create_stt_provider(settings)
-            llm = create_llm_provider(settings)
-            memory_service: MemoryService | None = None
-            if settings.memory_enabled:
-                memory_service = MemoryService(
-                    MemoryRepository(db_session),
-                    OpenAIEmbeddingProvider(
-                        settings.openai_api_key,
-                        model=settings.memory_embedding_model,
-                    ),
-                    settings,
-                    llm,
-                )
-            tool_router: ToolRouter | None = None
-            if settings.tools_enabled:
-                mcp_registry: MCPRuntimeRegistry | None = getattr(
-                    websocket.app.state, "mcp_registry", None
-                )
-                tool_router = ToolRouter(
-                    ToolRegistry(mcp_registry=mcp_registry),
-                    settings,
-                    ToolCallRepository(db_session),
-                )
-            response_generator = create_response_generator(
-                settings, llm, memory_service, tool_router
+            mcp_registry: MCPRuntimeRegistry | None = getattr(
+                websocket.app.state, "mcp_registry", None
             )
-            evaluation_engine: EvaluationEngine | None = None
-            if settings.evaluation_enabled:
-                evaluation_engine = EvaluationEngine(
-                    EvaluationRepository(db_session), settings
-                )
-            outcome_service = OutcomeExtractionService(OutcomeRepository(db_session))
-            tts = create_tts_provider(settings)
-            pipeline = VoicePipelineService(
-                session_manager,
-                stt,
-                response_generator,
-                tts,
+            bundle = build_voice_pipeline_bundle(
+                db_session,
+                state_store,
+                event_bus,
                 settings,
-                memory_service,
-                evaluation_engine,
-                outcome_service,
+                mcp_registry=mcp_registry,
             )
+            session_manager = bundle.session_manager
+            pipeline = bundle.pipeline
+            response_generator = bundle.response_generator
 
             while True:
                 message = await websocket.receive()

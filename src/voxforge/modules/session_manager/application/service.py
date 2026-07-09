@@ -143,5 +143,9 @@ class SessionManager:
         state = await self._state_store.get_state_or_none(session_id)
         return state.config if state else {}
 
+    async def get_session_phase(self, session_id: UUID) -> SessionPhase:
+        state = await self._state_store.get_state_or_none(session_id)
+        return state.phase if state else SessionPhase.LISTENING
+
     async def commit(self) -> None:
         await self._db_session.commit()

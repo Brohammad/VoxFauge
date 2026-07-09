@@ -1,0 +1,95 @@
+"""Shared VoicePipelineService wiring for WebSocket and LiveKit transports."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from voxforge.config import Settings
+from voxforge.core.events.bus import EventBus
+from voxforge.infrastructure.db.evaluation_repository import EvaluationRepository
+from voxforge.infrastructure.db.memory_repository import MemoryRepository
+from voxforge.infrastructure.db.outcome_repository import OutcomeRepository
+from voxforge.infrastructure.db.tool_repository import ToolCallRepository
+from voxforge.infrastructure.providers.embeddings.openai import OpenAIEmbeddingProvider
+from voxforge.infrastructure.providers.factory import (
+    create_llm_provider,
+    create_stt_provider,
+    create_tts_provider,
+)
+from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
+from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
+from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
+from voxforge.modules.evaluation.application.service import EvaluationEngine
+from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
+from voxforge.modules.mcp_tool_router.application.router import ToolRouter
+from voxforge.modules.memory.application.service import MemoryService
+from voxforge.modules.outcomes.application.service import OutcomeExtractionService
+from voxforge.modules.session_manager.application.service import SessionManager
+from voxforge.modules.voice_gateway.application.pipeline import VoicePipelineService
+
+
+@dataclass
+class VoicePipelineBundle:
+    session_manager: SessionManager
+    pipeline: VoicePipelineService
+    response_generator: object
+
+
+def build_voice_pipeline_bundle(
+    db_session: AsyncSession,
+    state_store: RedisSessionStateStore,
+    event_bus: EventBus,
+    settings: Settings,
+    *,
+    mcp_registry: MCPRuntimeRegistry | None = None,
+) -> VoicePipelineBundle:
+    session_manager = SessionManager(db_session, state_store, event_bus, settings)
+    stt = create_stt_provider(settings)
+    llm = create_llm_provider(settings)
+
+    memory_service: MemoryService | None = None
+    if settings.memory_enabled:
+        memory_service = MemoryService(
+            MemoryRepository(db_session),
+            OpenAIEmbeddingProvider(
+                settings.openai_api_key,
+                model=settings.memory_embedding_model,
+            ),
+            settings,
+            llm,
+        )
+
+    tool_router: ToolRouter | None = None
+    if settings.tools_enabled:
+        tool_router = ToolRouter(
+            ToolRegistry(mcp_registry=mcp_registry),
+            settings,
+            ToolCallRepository(db_session),
+        )
+
+    response_generator = create_response_generator(settings, llm, memory_service, tool_router)
+
+    evaluation_engine: EvaluationEngine | None = None
+    if settings.evaluation_enabled:
+        evaluation_engine = EvaluationEngine(EvaluationRepository(db_session), settings)
+
+    outcome_service = OutcomeExtractionService(OutcomeRepository(db_session))
+    tts = create_tts_provider(settings)
+
+    pipeline = VoicePipelineService(
+        session_manager,
+        stt,
+        response_generator,
+        tts,
+        settings,
+        memory_service,
+        evaluation_engine,
+        outcome_service,
+    )
+    return VoicePipelineBundle(
+        session_manager=session_manager,
+        pipeline=pipeline,
+        response_generator=response_generator,
+    )
