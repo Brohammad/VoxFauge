@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from voxforge.config import Settings
 from voxforge.core.domain.memory import MemoryEntryType
-from voxforge.infrastructure.db.base import Base
 from voxforge.infrastructure.db.memory_repository import MemoryRepository
 from voxforge.modules.memory.application.service import MemoryService
 
@@ -144,18 +143,19 @@ async def test_memory_search_api(auth_client):
 
 
 @pytest.mark.asyncio
-@pytest.mark.skipif(
-    not os.getenv("DATABASE_URL", "").startswith("postgresql"),
-    reason="requires PostgreSQL with pgvector (set DATABASE_URL)",
-)
+@pytest.mark.postgres
 async def test_memory_repository_postgres_vector_search():
     """Exercises the pgvector CAST(...) SQL path against a real Postgres instance."""
     from voxforge.infrastructure.db.models import OrganizationModel, VoiceSessionModel
+    from tests.helpers.postgres import run_alembic_migrations
 
-    engine = create_async_engine(os.environ["DATABASE_URL"], echo=False)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    database_url = os.getenv("DATABASE_URL", "")
+    if not database_url.startswith("postgresql"):
+        pytest.skip("requires PostgreSQL DATABASE_URL")
 
+    run_alembic_migrations()
+
+    engine = create_async_engine(database_url, echo=False)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     org_id = uuid4()
     session_id = uuid4()

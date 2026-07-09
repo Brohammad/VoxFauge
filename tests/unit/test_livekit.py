@@ -10,7 +10,13 @@ from voxforge.infrastructure.livekit.token_service import LiveKitTokenService
 
 
 def test_livekit_disabled_without_config():
-    svc = LiveKitTokenService(Settings())
+    svc = LiveKitTokenService(
+        Settings(
+            livekit_url="",
+            livekit_api_key="",
+            livekit_api_secret="",
+        )
+    )
     assert svc.enabled is False
     with pytest.raises(ProviderError):
         svc.create_participant_token(
