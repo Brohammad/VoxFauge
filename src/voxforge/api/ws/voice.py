@@ -19,9 +19,11 @@ from voxforge.infrastructure.db.tool_repository import ToolCallRepository
 from voxforge.infrastructure.observability.logging import get_logger
 from voxforge.infrastructure.observability.metrics import active_sessions, ws_connections
 from voxforge.infrastructure.providers.embeddings.openai import OpenAIEmbeddingProvider
-from voxforge.infrastructure.providers.llm.openai import OpenAILLMProvider
-from voxforge.infrastructure.providers.stt.deepgram import DeepgramSTTProvider
-from voxforge.infrastructure.providers.tts.cartesia import CartesiaTTSProvider
+from voxforge.infrastructure.providers.factory import (
+    create_llm_provider,
+    create_stt_provider,
+    create_tts_provider,
+)
 from voxforge.infrastructure.redis.client import get_redis
 from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
 from voxforge.infrastructure.tools.mcp_adapter import MCPToolAdapter
@@ -64,8 +66,8 @@ async def voice_websocket(websocket: WebSocket) -> None:
             event_bus = get_event_bus()
             auth_service = AuthService(db_session, settings)
             session_manager = SessionManager(db_session, state_store, event_bus, settings)
-            stt = DeepgramSTTProvider(settings.deepgram_api_key)
-            llm = OpenAILLMProvider(settings.openai_api_key)
+            stt = create_stt_provider(settings)
+            llm = create_llm_provider(settings)
             memory_service: MemoryService | None = None
             if settings.memory_enabled:
                 memory_service = MemoryService(
@@ -98,7 +100,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                     EvaluationRepository(db_session), settings
                 )
             outcome_service = OutcomeExtractionService(OutcomeRepository(db_session))
-            tts = CartesiaTTSProvider(settings.cartesia_api_key)
+            tts = create_tts_provider(settings)
             pipeline = VoicePipelineService(
                 session_manager,
                 stt,
