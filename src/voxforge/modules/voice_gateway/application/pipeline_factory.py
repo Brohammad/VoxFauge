@@ -22,7 +22,7 @@ from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
 from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
 from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
 from voxforge.modules.evaluation.application.service import EvaluationEngine
-from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
+from voxforge.infrastructure.tools.registry_factory import create_tool_registry
 from voxforge.modules.mcp_tool_router.application.router import ToolRouter
 from voxforge.modules.memory.application.service import MemoryService
 from voxforge.modules.outcomes.application.service import OutcomeExtractionService
@@ -64,7 +64,7 @@ def build_voice_pipeline_bundle(
     tool_router: ToolRouter | None = None
     if settings.tools_enabled:
         tool_router = ToolRouter(
-            ToolRegistry(mcp_registry=mcp_registry),
+            create_tool_registry(settings, mcp_registry=mcp_registry),
             settings,
             ToolCallRepository(db_session),
         )

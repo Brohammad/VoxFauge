@@ -1,4 +1,4 @@
-.PHONY: test lint benchmark-onboarding livekit-worker deploy-validate
+.PHONY: test lint benchmark-onboarding benchmark-knowledge-base livekit-worker deploy-validate
 
 test:
 	pytest -v --tb=short
@@ -20,3 +20,9 @@ benchmark-onboarding-json:
 
 benchmark-onboarding-memory:
 	python scripts/benchmark_onboarding.py --iterations 10 --warmup 2 --memory --json
+
+benchmark-knowledge-base:
+	python scripts/benchmark_knowledge_base.py --iterations 100
+
+benchmark-knowledge-base-json:
+	python scripts/benchmark_knowledge_base.py --iterations 100 --json

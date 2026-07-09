@@ -9,6 +9,7 @@ from voxforge.infrastructure.tools.builtin import (
     BuiltinEchoTool,
     BuiltinGetTimeTool,
 )
+from voxforge.infrastructure.tools.registry_factory import create_tool_registry
 from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
 from voxforge.modules.mcp_tool_router.application.router import ToolRouter
 
@@ -41,6 +42,13 @@ def test_registry_lists_builtin_tools():
     assert "calculate" in names
     assert "get_current_time" in names
     assert "echo" in names
+
+
+def test_registry_lists_support_tools_when_configured():
+    settings = Settings(tools_enabled=True, support_tools_enabled=True)
+    registry = create_tool_registry(settings)
+    names = {t.name for t in registry.list_definitions()}
+    assert "knowledge_base_lookup" in names
 
 
 @pytest.mark.asyncio

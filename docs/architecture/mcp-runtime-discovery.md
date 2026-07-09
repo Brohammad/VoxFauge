@@ -17,11 +17,11 @@ stateDiagram-v2
     Ready --> Rediscover: future hot registration
 ```
 
-1. **App startup** (`main.py` lifespan) creates `MCPRuntimeRegistry` when tools are enabled
-   and config is non-empty.
-2. **`discover_all()`** runs per-server discovery with isolated timeouts.
-3. Registry is stored on `app.state.mcp_registry` for request-scoped DI.
-4. `ToolRegistry` merges builtin tools + discovered MCP tools for `ToolRouter`.
+1. **App startup** (`main.py` lifespan) creates `MCPRuntimeRegistry` when tools are enabled.
+2. **`discover_all()`** runs per-server discovery when `MCP_SERVERS_CONFIG` is set.
+3. **Support tools** register as internal server `voxforge-support` via `register_support_tool_discovery()`.
+4. Registry is stored on `app.state.mcp_registry` for request-scoped DI.
+5. `ToolRegistry` merges builtin tools + support tools + discovered MCP tools for `ToolRouter`.
 
 ## Discovery Sequence
 

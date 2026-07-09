@@ -10,9 +10,11 @@ from voxforge.infrastructure.observability.metrics import (
     tool_calls_total,
     tool_latency_seconds,
 )
+from voxforge.infrastructure.observability.telemetry import get_tracer
 from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
 
 logger = get_logger(__name__)
+_tracer = get_tracer(__name__)
 
 
 class ToolRouter:
@@ -51,31 +53,40 @@ class ToolRouter:
         output = ""
         error: str | None = None
 
-        try:
-            if self._registry.is_mcp_tool(tool_name):
-                result = await asyncio.wait_for(
-                    self._registry.invoke_mcp(tool_name, arguments),
-                    timeout=self._settings.tool_timeout_seconds,
-                )
-            else:
-                handler = self._registry.get_handler(tool_name)
-                if handler is None:
-                    raise ValueError(f"Unknown tool: {tool_name}")
-                output = await asyncio.wait_for(
-                    handler.invoke(arguments),
-                    timeout=self._settings.tool_timeout_seconds,
-                )
-                result = ToolResult(tool_name=tool_name, output=output)
-            output = result.output
-            status = result.status
-            error = result.error
-        except TimeoutError:
-            status = ToolCallStatus.TIMEOUT
-            error = f"Tool '{tool_name}' timed out"
-        except Exception as exc:
-            status = ToolCallStatus.ERROR
-            error = str(exc)
-            logger.error("tool_execution_error", tool=tool_name, error=error)
+        with _tracer.start_as_current_span("tool.router.execute") as span:
+            span.set_attribute("voxforge.tool.name", tool_name)
+            if org_id is not None:
+                span.set_attribute("voxforge.org.id", str(org_id))
+            if session_id is not None:
+                span.set_attribute("voxforge.session.id", str(session_id))
+
+            try:
+                if self._registry.is_mcp_tool(tool_name):
+                    result = await asyncio.wait_for(
+                        self._registry.invoke_mcp(tool_name, arguments),
+                        timeout=self._settings.tool_timeout_seconds,
+                    )
+                else:
+                    handler = self._registry.get_handler(tool_name)
+                    if handler is None:
+                        raise ValueError(f"Unknown tool: {tool_name}")
+                    output = await asyncio.wait_for(
+                        handler.invoke(arguments),
+                        timeout=self._settings.tool_timeout_seconds,
+                    )
+                    result = ToolResult(tool_name=tool_name, output=output)
+                output = result.output
+                status = result.status
+                error = result.error
+            except TimeoutError:
+                status = ToolCallStatus.TIMEOUT
+                error = f"Tool '{tool_name}' timed out"
+            except Exception as exc:
+                status = ToolCallStatus.ERROR
+                error = str(exc)
+                logger.error("tool_execution_error", tool=tool_name, error=error)
+
+            span.set_attribute("voxforge.tool.status", status.value)
 
         latency_ms = (time.monotonic() - start) * 1000
         tool_calls_total.labels(tool_name=tool_name, status=status.value).inc()

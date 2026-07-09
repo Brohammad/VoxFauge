@@ -85,6 +85,13 @@ class Settings(BaseSettings):
     memory_summary_model: str = "gpt-4.1-mini"
 
     tools_enabled: bool = True
+    support_tools_enabled: bool = True
+    knowledge_base_provider: str = "mock"  # mock | zendesk | freshdesk
+    ticketing_provider: str = "mock"  # mock | zendesk | freshdesk
+    zendesk_subdomain: str = ""
+    zendesk_api_token: str = ""
+    freshdesk_domain: str = ""
+    freshdesk_api_key: str = ""
     tool_timeout_seconds: int = 30
     max_tool_iterations: int = 5
     mcp_servers_config: str = ""  # JSON array of MCP server configs

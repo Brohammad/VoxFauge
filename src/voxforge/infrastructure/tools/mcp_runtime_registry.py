@@ -41,6 +41,8 @@ class MCPRuntimeRegistry:
         self._server_records: dict[str, MCPServerRecord] = {}
         self._tool_index: dict[str, ToolDefinition] = {}
         self._tool_server_map: dict[str, str] = {}
+        self._internal_discovery_tools: list[ToolDefinition] = []
+        self._internal_server: MCPServerRecord | None = None
         self._discovery_ms: float | None = None
 
         for index, server in enumerate(parse_mcp_servers_config(settings.mcp_servers_config)):
@@ -98,7 +100,7 @@ class MCPRuntimeRegistry:
         return self._discovery_ms
 
     def list_tool_definitions(self) -> list[ToolDefinition]:
-        return list(self._tool_index.values())
+        return list(self._tool_index.values()) + self._internal_discovery_tools
 
     def get_tool(self, name: str) -> ToolDefinition | None:
         return self._tool_index.get(name)
@@ -107,7 +109,10 @@ class MCPRuntimeRegistry:
         return name in self._tool_index
 
     def list_servers(self) -> list[MCPServerRecord]:
-        return list(self._server_records.values())
+        servers = list(self._server_records.values())
+        if self._internal_server is not None:
+            servers.append(self._internal_server)
+        return servers
 
     def get_health(self) -> MCPRegistryHealth:
         servers = self.list_servers()
@@ -130,7 +135,7 @@ class MCPRuntimeRegistry:
             healthy_count=healthy,
             degraded_count=degraded,
             offline_count=offline,
-            tool_count=len(self._tool_index),
+            tool_count=len(self._tool_index) + len(self._internal_discovery_tools),
             discovery_ms=self._discovery_ms,
             servers=servers,
         )
@@ -185,6 +190,10 @@ class MCPRuntimeRegistry:
 
     def unregister_server(self, server_id: str) -> None:
         """Remove a server and its tools from the registry."""
+        if self._internal_server is not None and self._internal_server.server_id == server_id:
+            self._internal_server = None
+            self._internal_discovery_tools = []
+            return
         self._servers = [s for s in self._servers if s.get("_server_id") != server_id]
         self._server_records.pop(server_id, None)
         for tool_name, mapped_server in list(self._tool_server_map.items()):
@@ -192,6 +201,40 @@ class MCPRuntimeRegistry:
                 self._tool_index.pop(tool_name, None)
                 self._tool_server_map.pop(tool_name, None)
         mcp_servers_total.labels(status="unregistered").inc()
+
+    def register_internal_support_tools(self, tools: list[Any]) -> None:
+        """Expose in-process support tools through MCP discovery metadata."""
+        from datetime import UTC, datetime
+
+        definitions = [
+            ToolDefinition(
+                name=tool.name,
+                description=tool.description,
+                parameters=tool.parameters,
+                source="internal",
+                server_id="voxforge-support",
+                version="1.0.0",
+            )
+            for tool in tools
+        ]
+        self._internal_discovery_tools = definitions
+        self._internal_server = MCPServerRecord(
+            server_id="voxforge-support",
+            name="VoxForge Customer Support",
+            transport="internal",
+            status=MCPServerStatus.HEALTHY,
+            version="1.0.0",
+            tool_count=len(definitions),
+            permissions=["tools:execute"],
+            capabilities=["knowledge_base", "ticketing"],
+            discovery_source="internal",
+            last_discovered_at=datetime.now(UTC),
+        )
+        logger.info(
+            "support_tools_registered",
+            tool_count=len(definitions),
+            tools=[tool.name for tool in tools],
+        )
 
     def _register_server_tools(
         self,

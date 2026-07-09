@@ -10,10 +10,18 @@ from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistr
 class ToolRegistry:
     """Registry of callable tools from builtin and MCP sources."""
 
-    def __init__(self, mcp_registry: MCPRuntimeRegistry | None = None) -> None:
+    def __init__(
+        self,
+        mcp_registry: MCPRuntimeRegistry | None = None,
+        *,
+        extra_tools: list[Any] | None = None,
+    ) -> None:
         self._handlers: dict[str, Any] = {}
         self._mcp_registry = mcp_registry
         self._register_builtins()
+        if extra_tools:
+            for tool in extra_tools:
+                self._handlers[tool.name] = tool
 
     def _register_builtins(self) -> None:
         for tool in BUILTIN_TOOLS:

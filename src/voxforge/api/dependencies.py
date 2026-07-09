@@ -34,7 +34,7 @@ from voxforge.modules.auth.application.service import AuthService
 from voxforge.modules.auth.application.sso_service import SamlConnectionService
 from voxforge.modules.dashboard.application.service import DashboardService
 from voxforge.modules.evaluation.application.service import EvaluationEngine
-from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
+from voxforge.infrastructure.tools.registry_factory import create_tool_registry
 from voxforge.modules.mcp_tool_router.application.router import ToolRouter
 from voxforge.modules.memory.application.service import MemoryService
 from voxforge.modules.onboarding.application.service import OnboardingService
@@ -160,7 +160,7 @@ def get_tool_router(
 ) -> ToolRouter | None:
     if not settings.tools_enabled:
         return None
-    registry = ToolRegistry(mcp_registry=mcp_registry)
+    registry = create_tool_registry(settings, mcp_registry=mcp_registry)
     repo = ToolCallRepository(db)
     return ToolRouter(registry, settings, repo)
 

@@ -25,6 +25,11 @@ flowchart LR
 | `get_current_time` | Current UTC timestamp |
 | `calculate` | Safe math expression evaluator |
 | `echo` | Echo message (testing) |
+| `knowledge_base_lookup` | Search customer knowledge base |
+| `ticket_lookup` | Look up support tickets by ID or email |
+| `ticket_create` | Create a new support ticket |
+
+See [customer-support-tools.md](customer-support-tools.md) for the support workflow architecture.
 
 ## MCP Integration
 
@@ -71,6 +76,9 @@ When `ORCHESTRATOR_MODE=multi_agent` and `TOOLS_ENABLED=true`, the **executor** 
 
 ```env
 TOOLS_ENABLED=true
+SUPPORT_TOOLS_ENABLED=true
+KNOWLEDGE_BASE_PROVIDER=mock
+TICKETING_PROVIDER=mock
 TOOL_TIMEOUT_SECONDS=30
 MAX_TOOL_ITERATIONS=5
 MCP_SERVERS_CONFIG=

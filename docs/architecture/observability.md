@@ -25,6 +25,25 @@ Key panels in the bundled Grafana dashboard:
 - Outcome KPI writes by intent/success/escalation
 - Onboarding funnel step completions
 
+## Human handoff metrics (planned — ADR-006)
+
+See [Human Handoff Architecture](./human-handoff.md) for full specification.
+
+| Metric | Type | Labels |
+|--------|------|--------|
+| `voxforge_handoff_initiated_total` | Counter | `trigger`, `org_id` |
+| `voxforge_handoff_completed_total` | Counter | `status` |
+| `voxforge_handoff_duration_seconds` | Histogram | `stage` |
+| `voxforge_handoff_time_to_accept_seconds` | Histogram | — |
+| `voxforge_handoff_time_to_resolve_seconds` | Histogram | — |
+| `voxforge_handoff_queue_depth` | Gauge | `org_id` |
+| `voxforge_handoff_confidence_at_escalation` | Histogram | `trigger` |
+| `voxforge_handoff_resume_total` | Counter | `status` |
+
+OTel spans: `handoff.policy.evaluate`, `handoff.orchestrate`, `handoff.ticket.create`,
+`handoff.summary.generate`, `handoff.replay.link`, `handoff.assign`, `handoff.resume`,
+`handoff.complete`.
+
 ## Quick start
 
 ```bash
