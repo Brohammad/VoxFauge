@@ -46,6 +46,7 @@ htmlcov/
 deploy/backups/*.sql.gz
 deploy/.droplet-ip
 deploy/nginx/certs-ready
+deploy/nginx/staged/
 deploy/nginx/conf.d/voxforge.conf
 deploy/nginx/conf.d/voxforge-http.conf
 deploy/nginx/conf.d/voxforge-https.conf

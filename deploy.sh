@@ -59,13 +59,18 @@ render_nginx_config() {
   local http_tpl="$NGINX_CONF_DIR/voxforge-http.conf.template"
   local https_tpl="$NGINX_CONF_DIR/voxforge-https.conf.template"
   local out="$NGINX_CONF_DIR/voxforge.conf"
+  local staged_dir="$ROOT/deploy/nginx/staged"
 
   log "Rendering NGINX config for $DOMAIN..."
-  sed -e "s/\${DOMAIN}/$DOMAIN/g" "$http_tpl" > "$NGINX_CONF_DIR/voxforge-http.conf"
-  sed -e "s/\${DOMAIN}/$DOMAIN/g" "$https_tpl" > "$NGINX_CONF_DIR/voxforge-https.conf"
+  mkdir -p "$staged_dir"
+  sed -e "s/\${DOMAIN}/$DOMAIN/g" "$http_tpl" > "$staged_dir/voxforge-http.conf"
+  sed -e "s/\${DOMAIN}/$DOMAIN/g" "$https_tpl" > "$staged_dir/voxforge-https.conf"
+
+  # NGINX loads every *.conf in conf.d — keep TLS snippets staged until certs exist.
+  rm -f "$NGINX_CONF_DIR/voxforge-http.conf" "$NGINX_CONF_DIR/voxforge-https.conf"
 
   if [[ -f "$ROOT/deploy/nginx/certs-ready" ]]; then
-    cat "$NGINX_CONF_DIR/voxforge-http.conf" "$NGINX_CONF_DIR/voxforge-https.conf" > "$out"
+    cat "$staged_dir/voxforge-http.conf" "$staged_dir/voxforge-https.conf" > "$out"
   else
     cp "$NGINX_CONF_DIR/voxforge-bootstrap.conf" "$out"
   fi

@@ -72,3 +72,9 @@ def test_docker_entrypoint_skips_missing_demo_script() -> None:
 def test_deploy_sh_auto_generates_env_file() -> None:
     text = DEPLOY_SH.read_text()
     assert "setup-production-env.sh" in text
+
+
+def test_deploy_sh_stages_nginx_tls_snippets() -> None:
+    text = DEPLOY_SH.read_text()
+    assert "deploy/nginx/staged" in text
+    assert 'rm -f "$NGINX_CONF_DIR/voxforge-http.conf"' in text
