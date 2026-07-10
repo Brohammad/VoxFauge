@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### RC-1 (2026-07-10)
+
+#### Added
+- Playwright browser test suite (`tests/browser/`) with CI job
+- `Dockerfile.dev` for local development; `docker-compose.smoke.yml` for prod smoke tests
+- `deploy.sh smoke` and `scripts/validate-prod-smoke.sh` for local production validation
+- Content-Security-Policy headers (UI vs API policies)
+- OpenTelemetry FastAPI auto-instrumentation
+- Deployment verification checklist, FAQ, roadmap, known limitations
+
+#### Changed
+- Production compose: app healthchecks; workers wait for healthy app
+- `.env.production.example` uses placeholder domain; `setup-production-env.sh` accepts domain argument
+
+#### Removed
+- Dead code: `mcp_adapter.py`, unused `Evaluator`/`ToolHandler` interfaces, empty `stt`/`tts` modules
+
+### Added (pre-RC)
 - Security headers middleware for direct app access (X-Content-Type-Options, X-Frame-Options, HSTS in production).
 - Dashboard email/password login alongside JWT paste.
 - Friendly API error parsing in the operator dashboard.
