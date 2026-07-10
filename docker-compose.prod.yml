@@ -20,8 +20,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "1.0"
-          memory: 1G
+          cpus: "${COMPOSE_CPU_POSTGRES:-0.30}"
+          memory: ${COMPOSE_MEM_POSTGRES:-512M}
     logging:
       driver: json-file
       options:
@@ -42,8 +42,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: 256M
+          cpus: "${COMPOSE_CPU_REDIS:-0.10}"
+          memory: ${COMPOSE_MEM_REDIS:-128M}
     logging:
       driver: json-file
       options:
@@ -85,8 +85,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "2.0"
-          memory: 2G
+          cpus: "${COMPOSE_CPU_APP:-0.50}"
+          memory: ${COMPOSE_MEM_APP:-1G}
     logging:
       driver: json-file
       options:
@@ -112,8 +112,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "1.0"
-          memory: 1G
+          cpus: "${COMPOSE_CPU_LIVEKIT:-0.30}"
+          memory: ${COMPOSE_MEM_LIVEKIT:-512M}
     logging:
       driver: json-file
       options:
@@ -143,8 +143,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: 512M
+          cpus: "${COMPOSE_CPU_KNOWLEDGE:-0.20}"
+          memory: ${COMPOSE_MEM_KNOWLEDGE:-256M}
     logging:
       driver: json-file
       options:
@@ -163,8 +163,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: 256M
+          cpus: "${COMPOSE_CPU_PROMETHEUS:-0.20}"
+          memory: ${COMPOSE_MEM_PROMETHEUS:-128M}
     logging:
       driver: json-file
       options:
@@ -190,8 +190,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: 256M
+          cpus: "${COMPOSE_CPU_GRAFANA:-0.20}"
+          memory: ${COMPOSE_MEM_GRAFANA:-128M}
     logging:
       driver: json-file
       options:
@@ -215,8 +215,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: 128M
+          cpus: "${COMPOSE_CPU_NGINX:-0.10}"
+          memory: ${COMPOSE_MEM_NGINX:-128M}
     logging:
       driver: json-file
       options:
