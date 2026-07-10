@@ -4,6 +4,10 @@ let trendDays = Number(localStorage.getItem("voxforge_trend_days") || 7);
 let orgId = null;
 
 const els = {
+  loginEmail: document.getElementById("login-email"),
+  loginPassword: document.getElementById("login-password"),
+  loginBtn: document.getElementById("login-btn"),
+  logoutBtn: document.getElementById("logout-btn"),
   tokenInput: document.getElementById("token-input"),
   connectBtn: document.getElementById("connect-btn"),
   authStatus: document.getElementById("auth-status"),
@@ -70,13 +74,32 @@ let kbPollTimer = null;
 
 els.tokenInput.value = token;
 
+function parseApiError(status, body) {
+  if (!body) {
+    if (status === 401) return "Authentication required. Log in or paste a valid JWT.";
+    if (status === 403) return "You do not have permission for this action.";
+    if (status === 404) return "The requested resource was not found.";
+    return `Request failed (${status}).`;
+  }
+  try {
+    const data = JSON.parse(body);
+    if (typeof data.detail === "string") return data.detail;
+    if (Array.isArray(data.detail)) {
+      return data.detail.map((item) => item.msg || JSON.stringify(item)).join("; ");
+    }
+  } catch {
+    // Fall through to raw body.
+  }
+  return body.length > 180 ? `${body.slice(0, 180)}…` : body;
+}
+
 async function api(path) {
   const res = await fetch(`${API}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`${res.status}: ${body}`);
+    throw new Error(parseApiError(res.status, body));
   }
   return res.json();
 }
@@ -92,7 +115,7 @@ async function agentConfigApi(path, options = {}) {
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`${res.status}: ${body}`);
+    throw new Error(parseApiError(res.status, body));
   }
   if (res.status === 204) return null;
   return res.json();
@@ -104,7 +127,7 @@ async function authApi(path) {
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`${res.status}: ${body}`);
+    throw new Error(parseApiError(res.status, body));
   }
   return res.json();
 }
@@ -132,7 +155,7 @@ async function ssoApi(path, options = {}) {
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`${res.status}: ${body}`);
+    throw new Error(parseApiError(res.status, body));
   }
   if (res.status === 204) return null;
   const contentType = res.headers.get("content-type") || "";
@@ -154,6 +177,41 @@ function clearError() {
 function setConnected(ok) {
   els.authStatus.textContent = ok ? "Connected" : "Not connected";
   els.authStatus.classList.toggle("connected", ok);
+  els.logoutBtn?.classList.toggle("hidden", !ok);
+}
+
+async function loginWithPassword() {
+  const email = els.loginEmail?.value.trim();
+  const password = els.loginPassword?.value || "";
+  if (!email || !password) {
+    showError("Enter email and password to log in.");
+    return;
+  }
+  clearError();
+  const res = await fetch("/api/v1/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const body = await res.text();
+  if (!res.ok) {
+    throw new Error(parseApiError(res.status, body));
+  }
+  const data = JSON.parse(body);
+  token = data.tokens.access_token;
+  orgId = null;
+  els.tokenInput.value = token;
+  localStorage.setItem("voxforge_token", token);
+  await refreshAll();
+}
+
+function logout() {
+  token = "";
+  orgId = null;
+  els.tokenInput.value = "";
+  localStorage.removeItem("voxforge_token");
+  setConnected(false);
+  clearError();
 }
 
 function card(label, value, sub = "") {
@@ -283,7 +341,7 @@ async function loadReplay(sessionId) {
   });
   if (!res.ok) {
     const msg = await res.text();
-    throw new Error(`${res.status}: ${msg}`);
+    throw new Error(parseApiError(res.status, msg));
   }
   const replay = await res.json();
   renderReplay(replay);
@@ -661,7 +719,7 @@ async function knowledgeApi(path, options = {}) {
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`${res.status}: ${body}`);
+    throw new Error(parseApiError(res.status, body));
   }
   if (res.status === 204) return null;
   const contentType = res.headers.get("content-type") || "";
@@ -682,7 +740,7 @@ async function handoffsApi(path, options = {}) {
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`${res.status}: ${body}`);
+    throw new Error(parseApiError(res.status, body));
   }
   if (res.status === 204) return null;
   return res.json();
@@ -852,7 +910,7 @@ async function callOnboarding(path, body) {
   });
   if (!res.ok) {
     const msg = await res.text();
-    throw new Error(`${res.status}: ${msg}`);
+    throw new Error(parseApiError(res.status, msg));
   }
   return res.json();
 }
@@ -863,7 +921,7 @@ async function loadOnboardingStatus() {
   });
   if (!res.ok) {
     const msg = await res.text();
-    throw new Error(`${res.status}: ${msg}`);
+    throw new Error(parseApiError(res.status, msg));
   }
   const run = await res.json();
   renderOnboardingStatus(run);
@@ -888,6 +946,15 @@ async function refreshAll() {
     showError(err.message);
   }
 }
+
+els.loginBtn?.addEventListener("click", () => {
+  loginWithPassword().catch((err) => {
+    setConnected(false);
+    showError(err.message);
+  });
+});
+
+els.logoutBtn?.addEventListener("click", logout);
 
 els.connectBtn.addEventListener("click", () => {
   token = els.tokenInput.value.trim();

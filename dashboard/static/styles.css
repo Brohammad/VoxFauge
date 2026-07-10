@@ -78,7 +78,17 @@ nav { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; }
 
 .topbar h1 { font-size: 1.25rem; font-weight: 600; }
 
-.auth-bar { display: flex; align-items: center; gap: 0.5rem; }
+.auth-bar { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.auth-divider { color: var(--muted); font-size: 0.8rem; }
+.auth-bar input[type="email"],
+.auth-bar input[type="password"] {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.65rem;
+  min-width: 9rem;
+}
 
 #token-input {
   background: var(--surface2);

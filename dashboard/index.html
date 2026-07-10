@@ -37,8 +37,13 @@
       <header class="topbar">
         <h1 id="page-title">Overview</h1>
         <div class="auth-bar">
-          <input id="token-input" type="password" placeholder="JWT access token" />
+          <input id="login-email" type="email" placeholder="Email" autocomplete="username" />
+          <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" />
+          <button id="login-btn" type="button">Login</button>
+          <span class="auth-divider">or paste token</span>
+          <input id="token-input" type="password" placeholder="JWT access token" autocomplete="off" />
           <button id="connect-btn" type="button">Connect</button>
+          <button id="logout-btn" type="button" class="hidden">Logout</button>
           <span id="auth-status" class="status-badge">Not connected</span>
         </div>
       </header>
