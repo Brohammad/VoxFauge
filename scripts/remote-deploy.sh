@@ -20,6 +20,7 @@ fi
 
 DROPLET_IP="${DROPLET_IP:-}"
 REPO_URL="${REPO_URL:-https://github.com/Brohammad/VoxForge.git}"
+DOMAIN="${DOMAIN:-voxforge.brohammad.tech}"
 SSH_USER="${SSH_USER:-root}"
 REMOTE_DIR="${REMOTE_DIR:-/opt/VoxForge}"
 
@@ -62,7 +63,7 @@ rm -rf ${REMOTE_DIR}
 git clone ${REPO_URL} ${REMOTE_DIR}
 cd ${REMOTE_DIR}
 chmod +x scripts/*.sh deploy.sh
-./scripts/setup-production-env.sh
+./scripts/setup-production-env.sh ${DOMAIN}
 # 2GB droplet: skip on-server monitoring, keep knowledge worker off by default
 sed -i 's/^KNOWLEDGE_WORKER_ENABLED=true/KNOWLEDGE_WORKER_ENABLED=false/' .env.production || true
 sed -i 's/^METRICS_BEARER_TOKEN=.*/METRICS_BEARER_TOKEN=/' .env.production || true

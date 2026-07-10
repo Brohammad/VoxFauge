@@ -1,93 +1,102 @@
 # VoxForge
 
 [![CI](https://github.com/Brohammad/VoxForge/actions/workflows/ci.yml/badge.svg)](https://github.com/Brohammad/VoxForge/actions/workflows/ci.yml)
+[![Live Demo](https://img.shields.io/badge/demo-live-38d996)](https://voxforge.brohammad.tech/demo)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Coverage](https://img.shields.io/badge/coverage-81%25-brightgreen)](docs/testing/coverage-report.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Production-grade Voice AI Infrastructure Platform for enterprise applications.
+**Production-grade Voice AI Infrastructure** — deploy, operate, and trust.
 
-## Quick Start
+🌐 **Live:** [voxforge.brohammad.tech](https://voxforge.brohammad.tech) · [Demo](https://voxforge.brohammad.tech/demo) · [Dashboard](https://voxforge.brohammad.tech/dashboard) · [API](https://voxforge.brohammad.tech/api/v1/docs)
+
+![Demo call completed in 36ms](docs/assets/screenshots/demo-results.png)
+
+Open-source platform for enterprise voice agents: one pipeline for WebSocket, programmatic onboarding, and LiveKit WebRTC — with knowledge RAG, MCP tools, evaluation, replay, and human handoff.
+
+## Why VoxForge
+
+| | VoxForge | Typical chatbot demo |
+|---|----------|---------------------|
+| **Deploy** | Self-hosted Docker + HTTPS | Vendor lock-in |
+| **Pipeline** | STT → agent → TTS + evaluation | LLM wrapper only |
+| **Operations** | Dashboard, replay, handoff queue | Logs in a black box |
+| **Tests** | 354+ automated tests | Unknown |
+
+[Competitive benchmark →](docs/benchmarks/competitive-analysis.md)
+
+## Quick start (15 minutes)
 
 ```bash
+git clone https://github.com/Brohammad/VoxForge.git
+cd VoxForge
 cp .env.example .env
+uv sync                    # or: pip install -e ".[dev,livekit]"
 docker compose up -d postgres redis
-pip install -e ".[dev,livekit]"
 alembic upgrade head
 uvicorn voxforge.main:app --reload --app-dir src
 ```
 
 | Surface | URL |
 |---------|-----|
-| API docs | http://localhost:8000/api/v1/docs |
 | Landing | http://localhost:8000/ |
 | Demo | http://localhost:8000/demo |
 | Dashboard | http://localhost:8000/dashboard |
+| API docs | http://localhost:8000/api/v1/docs |
 
-The demo and dashboard work out of the box with **mock providers** (no API keys). Register an account in the dashboard or use the one-click demo at `/demo`.
+Mock providers work out of the box — no API keys. Full path: [docs/ONBOARDING.md](docs/ONBOARDING.md).
 
 ## Production deployment
 
-See [docs/deployment/guide.md](docs/deployment/guide.md) for VPS deployment with Docker Compose, NGINX, and HTTPS.
-
 ```bash
-cp .env.production.example .env.production
-# Edit secrets, then on your VPS:
+./scripts/setup-production-env.sh your-domain.example
 ./deploy.sh init
 ```
 
-Validate before deploy:
-
-```bash
-python scripts/validate_production_env.py
-```
+See [deployment guide](docs/deployment/guide.md) · [runbook](docs/operations/runbook.md) · [public deployment record](docs/deployment/public-deployment-record.md)
 
 ## Architecture
 
-VoxForge is a modular monolith built with Clean Architecture principles:
+```text
+Client → Transport (WS / LiveKit) → Voice Pipeline → Agent Orchestrator → MCP → Evaluation → Replay
+```
 
 | Module | Responsibility |
 |--------|----------------|
-| **Auth** | JWT, RBAC, organizations, API keys, SAML SSO |
-| **Voice Gateway** | WebSocket transport, `VoicePipelineService` orchestration |
-| **Agent Orchestrator** | LangGraph multi-agent pipeline (planner, safety, executor, critic) |
-| **Memory** | Semantic retrieval, summarization, pgvector |
-| **Knowledge** | Document ingestion, chunking, embedding search, citations |
-| **Handoff** | Human escalation queue, replay links, ticketing integration |
-| **Evaluation** | Per-turn latency, quality, tool, and cost scoring |
-| **Dashboard** | Operator UI + analytics API |
-| **MCP Tool Router** | Builtin tools + MCP server discovery |
-| **LiveKit Gateway** | WebRTC token generation and worker dispatch |
+| **Auth** | JWT, RBAC, API keys, SAML SSO |
+| **Voice Gateway** | WebSocket + `VoicePipelineService` |
+| **Agent Orchestrator** | LangGraph multi-agent pipeline |
+| **Knowledge** | Document ingestion, pgvector RAG |
+| **Handoff** | Human escalation + replay links |
+| **Dashboard** | Operator UI + analytics |
 
-Voice providers (STT, LLM, TTS, embeddings) live in `infrastructure/providers/` and are selected via environment variables.
-
-See [docs/architecture/voice-pipeline.md](docs/architecture/voice-pipeline.md) for the pipeline design.
-
-Pilot value checklist: [docs/product/prove-value-in-1-day.md](docs/product/prove-value-in-1-day.md).
+[Architecture diagrams](docs/portfolio/architecture-diagrams.md) · [Voice pipeline](docs/architecture/voice-pipeline.md)
 
 ## Development
 
 ```bash
-make test              # pytest (excludes browser; use make test-browser for Playwright)
-make test-cov          # with 70% coverage gate
-ruff check src tests   # lint
-
-# Voice WebSocket smoke test
-python scripts/test_voice_ws.py
-
-# Manual QA harness (running server required)
-python scripts/e2e_qa_manual.py
+make test              # pytest (excludes browser)
+make test-browser      # 8 Playwright journeys
+make test-cov          # 70% coverage gate
+ruff check src tests
 ```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contributor guidelines.
 
 ## Documentation
 
-- [Deployment guide](docs/deployment/guide.md)
-- [Testing strategy](docs/testing/testing-strategy.md)
-- [Architecture index](docs/architecture/)
-- [ADRs](docs/adr/)
-- [Security policy](SECURITY.md)
-- [Changelog](CHANGELOG.md)
+| Topic | Link |
+|-------|------|
+| 15-min onboarding | [docs/ONBOARDING.md](docs/ONBOARDING.md) |
+| Pilot program | [docs/pilot/onboarding-guide.md](docs/pilot/onboarding-guide.md) |
+| Demo scripts | [docs/demo/](docs/demo/) |
+| Operations | [docs/operations/runbook.md](docs/operations/runbook.md) |
+| Launch checklist | [docs/launch/LAUNCH-CHECKLIST.md](docs/launch/LAUNCH-CHECKLIST.md) |
+| FAQ | [docs/FAQ.md](docs/FAQ.md) |
+| Roadmap | [docs/ROADMAP.md](docs/ROADMAP.md) |
+| Changelog | [CHANGELOG.md](CHANGELOG.md) |
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) · [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) · [SECURITY.md](SECURITY.md)
 
 ## License
 

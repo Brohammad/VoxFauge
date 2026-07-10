@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Launch (2026-07-10)
+
+#### Added
+- Production product website at `/` (hero, features, architecture, pricing, FAQ, screenshots)
+- Launch documentation: runbook, incident response, DR, pilot guides, demo scripts
+- Competitive benchmark vs Vapi, Retell, LiveKit Agents, and others
+- Portfolio materials: resume bullets, interview prep, architecture diagrams
+- CODE_OF_CONDUCT, GitHub issue templates (good first issue, help wanted)
+- Public deployment record for voxforge.brohammad.tech
+- 15-minute developer onboarding guide (`docs/ONBOARDING.md`)
+
+#### Changed
+- README: live demo badge, screenshot, documentation index
+- `remote-deploy.sh`: passes domain to `setup-production-env.sh`
+
 ### RC-1 (2026-07-10)
 
 #### Added
