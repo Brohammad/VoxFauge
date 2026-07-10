@@ -57,9 +57,7 @@ def build_turn_handoff_context(
             if isinstance(payload, dict) and payload.get("top_similarity") is not None:
                 kb_similarity = float(payload["top_similarity"])
 
-    critical_tool_failed = any(
-        name in CRITICAL_TOOLS for name in failed_tools
-    )
+    critical_tool_failed = any(name in CRITICAL_TOOLS for name in failed_tools)
 
     return TurnHandoffContext(
         user_transcript=user_transcript,

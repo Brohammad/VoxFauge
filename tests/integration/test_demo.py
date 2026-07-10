@@ -17,9 +17,7 @@ DEMO_USER_ID = UUID("a0000000-0000-4000-8000-000000000002")
 
 @pytest.fixture
 async def demo_seeded(db_session):
-    db_session.add(
-        OrganizationModel(id=DEMO_ORG_ID, name="VoxForge Demo", slug="voxforge-demo")
-    )
+    db_session.add(OrganizationModel(id=DEMO_ORG_ID, name="VoxForge Demo", slug="voxforge-demo"))
     db_session.add(
         UserModel(
             id=DEMO_USER_ID,
@@ -28,9 +26,7 @@ async def demo_seeded(db_session):
             full_name="Demo User",
         )
     )
-    db_session.add(
-        OrganizationMemberModel(org_id=DEMO_ORG_ID, user_id=DEMO_USER_ID, role="owner")
-    )
+    db_session.add(OrganizationMemberModel(org_id=DEMO_ORG_ID, user_id=DEMO_USER_ID, role="owner"))
     await db_session.commit()
 
 
@@ -68,4 +64,3 @@ async def test_demo_disabled_returns_404(test_client, monkeypatch):
     res = await test_client.post("/api/v1/demo/quickstart")
     assert res.status_code == 404
     get_settings.cache_clear()
-

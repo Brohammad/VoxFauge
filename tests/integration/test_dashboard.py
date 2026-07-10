@@ -35,9 +35,7 @@ async def test_dashboard_overview(db_session):
     db_session.add(
         MessageModel(session_id=session_id, role="user", content="Hi", content_type="text")
     )
-    db_session.add(
-        SessionMetricModel(session_id=session_id, metric_name="e2e_ms", value_ms=1500.0)
-    )
+    db_session.add(SessionMetricModel(session_id=session_id, metric_name="e2e_ms", value_ms=1500.0))
     run_id = uuid4()
     db_session.add(
         EvaluationRunModel(

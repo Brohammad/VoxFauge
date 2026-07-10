@@ -29,10 +29,7 @@ class ContextBuilder:
             messages.append(
                 ChatMessageLike(
                     role=MessageRole.SYSTEM,
-                    content=(
-                        "Conversation summary so far:\n"
-                        f"{memory_context.summary}"
-                    ),
+                    content=(f"Conversation summary so far:\n{memory_context.summary}"),
                 )
             )
 

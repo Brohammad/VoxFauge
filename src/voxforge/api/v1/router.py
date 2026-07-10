@@ -6,8 +6,8 @@ from voxforge.api.v1.auth import router as auth_router
 from voxforge.api.v1.dashboard import router as dashboard_router
 from voxforge.api.v1.demo import router as demo_router
 from voxforge.api.v1.evaluations import router as evaluations_router
-from voxforge.api.v1.health import router as health_router
 from voxforge.api.v1.handoffs import router as handoffs_router
+from voxforge.api.v1.health import router as health_router
 from voxforge.api.v1.knowledge import router as knowledge_router
 from voxforge.api.v1.livekit import router as livekit_router
 from voxforge.api.v1.memory import router as memory_router

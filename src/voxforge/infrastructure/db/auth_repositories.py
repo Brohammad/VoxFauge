@@ -5,13 +5,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voxforge.core.domain.auth import ApiKey, Organization, OrganizationMember, OrgRole, User
+from voxforge.core.domain.sso import SamlConnection, SamlConnectionStatus, SamlProviderType
 from voxforge.core.exceptions import (
     ApiKeyNotFoundError,
     OrganizationNotFoundError,
     SamlConnectionNotFoundError,
     UserNotFoundError,
 )
-from voxforge.core.domain.sso import SamlConnection, SamlConnectionStatus, SamlProviderType
 from voxforge.infrastructure.db.models import (
     ApiKeyModel,
     AuditLogModel,

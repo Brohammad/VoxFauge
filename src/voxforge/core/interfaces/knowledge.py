@@ -7,7 +7,6 @@ from voxforge.core.domain.knowledge import (
     ChunkingConfig,
     ChunkSearchResult,
     IngestJob,
-    KnowledgeChunk,
     KnowledgeCollection,
     KnowledgeDocument,
     KnowledgeDocumentVersion,

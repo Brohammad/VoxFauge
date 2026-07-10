@@ -7,7 +7,10 @@ from pydantic import BaseModel, Field
 from voxforge.api.dependencies import get_agent_config_service, require_scope
 from voxforge.core.domain.agent_config import AgentConfigVersion, PolicyPreset
 from voxforge.core.domain.auth import Principal
-from voxforge.infrastructure.db.agent_config_repository import ConfigPresetNotFoundError, ConfigVersionNotFoundError
+from voxforge.infrastructure.db.agent_config_repository import (
+    ConfigPresetNotFoundError,
+    ConfigVersionNotFoundError,
+)
 from voxforge.modules.agent_config.application.service import AgentConfigService
 
 router = APIRouter(prefix="/agent-configs", tags=["agent-configs"])
@@ -66,7 +69,9 @@ async def list_policy_presets(
     return [_preset_to_response(item) for item in presets]
 
 
-@router.post("/presets/{preset_slug}/apply", response_model=AgentConfigVersionResponse, status_code=201)
+@router.post(
+    "/presets/{preset_slug}/apply", response_model=AgentConfigVersionResponse, status_code=201
+)
 async def apply_policy_preset(
     preset_slug: str,
     body: ApplyPolicyPresetRequest,

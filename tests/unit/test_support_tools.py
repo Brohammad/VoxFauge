@@ -10,6 +10,7 @@ from voxforge.infrastructure.providers.support.mock import (
     MockKnowledgeBaseProvider,
     MockTicketingProvider,
 )
+from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
 from voxforge.infrastructure.tools.registry_factory import (
     build_support_tool_handlers,
     create_tool_registry,
@@ -19,7 +20,6 @@ from voxforge.infrastructure.tools.support_tools import (
     TicketCreateTool,
     TicketLookupTool,
 )
-from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
 from voxforge.modules.mcp_tool_router.application.router import ToolRouter
 
 

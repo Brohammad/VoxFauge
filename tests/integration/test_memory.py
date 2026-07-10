@@ -146,8 +146,8 @@ async def test_memory_search_api(auth_client):
 @pytest.mark.postgres
 async def test_memory_repository_postgres_vector_search():
     """Exercises the pgvector CAST(...) SQL path against a real Postgres instance."""
-    from voxforge.infrastructure.db.models import OrganizationModel, VoiceSessionModel
     from tests.helpers.postgres import run_alembic_migrations
+    from voxforge.infrastructure.db.models import OrganizationModel, VoiceSessionModel
 
     database_url = os.getenv("DATABASE_URL", "")
     if not database_url.startswith("postgresql"):
@@ -161,9 +161,7 @@ async def test_memory_repository_postgres_vector_search():
     session_id = uuid4()
 
     async with factory() as db_session:
-        db_session.add(
-            OrganizationModel(id=org_id, name="Test Org", slug=f"org-{org_id.hex[:8]}")
-        )
+        db_session.add(OrganizationModel(id=org_id, name="Test Org", slug=f"org-{org_id.hex[:8]}"))
         db_session.add(
             VoiceSessionModel(
                 id=session_id, org_id=org_id, status="active", transport_type="websocket"

@@ -6,7 +6,12 @@ from pydantic import BaseModel, Field
 
 from voxforge.api.dependencies import get_current_principal, get_saml_connection_service
 from voxforge.core.domain.auth import OrgRole, Principal, TokenPair
-from voxforge.core.domain.sso import SamlConnection, SamlConnectionStatus, SamlLoginRedirect, SamlProviderType
+from voxforge.core.domain.sso import (
+    SamlConnection,
+    SamlConnectionStatus,
+    SamlLoginRedirect,
+    SamlProviderType,
+)
 from voxforge.core.exceptions import ForbiddenError, SamlAssertionError, SamlConnectionNotFoundError
 from voxforge.modules.auth.application.sso_service import SamlConnectionService
 

@@ -35,9 +35,7 @@ class ZendeskTicketingProvider:
     async def lookup_ticket(self, ticket_id: str) -> SupportTicket | None:
         raise ProviderError("zendesk", "Zendesk ticketing integration is not yet implemented")
 
-    async def lookup_by_customer_email(
-        self, email: str, *, limit: int = 5
-    ) -> list[SupportTicket]:
+    async def lookup_by_customer_email(self, email: str, *, limit: int = 5) -> list[SupportTicket]:
         raise ProviderError("zendesk", "Zendesk ticketing integration is not yet implemented")
 
     async def create_ticket(self, request: TicketCreateRequest) -> SupportTicket:

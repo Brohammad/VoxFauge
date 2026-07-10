@@ -23,7 +23,6 @@ async def test_get_article_by_chunk_id():
 @pytest.mark.asyncio
 async def test_adapter_used_by_knowledge_base_lookup_tool():
     """Tool handler works with mock provider via factory."""
-    from voxforge.infrastructure.tools.registry_factory import build_support_tool_handlers
 
     settings = Settings(knowledge_base_provider="mock", knowledge_enabled=True)
     handlers = build_support_tool_handlers(settings)

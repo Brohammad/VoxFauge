@@ -34,6 +34,9 @@ class ConversationEngine:
     def set_session_org(self, session_id: UUID, org_id: UUID | None) -> None:
         self._org_ids[session_id] = org_id
 
+    def set_caller_scopes(self, session_id: UUID, scopes: list[str]) -> None:
+        return
+
     def init_session(self, session_id: UUID) -> None:
         self._history[session_id] = [
             _ChatMessage(role=MessageRole.SYSTEM, content=self._settings.system_prompt)
@@ -47,9 +50,7 @@ class ConversationEngine:
     def add_assistant_message(self, session_id: UUID, content: str) -> None:
         if session_id not in self._history:
             self.init_session(session_id)
-        self._history[session_id].append(
-            _ChatMessage(role=MessageRole.ASSISTANT, content=content)
-        )
+        self._history[session_id].append(_ChatMessage(role=MessageRole.ASSISTANT, content=content))
 
     def load_history(self, session_id: UUID, messages: list[Message]) -> None:
         self._history[session_id] = [
@@ -76,9 +77,7 @@ class ConversationEngine:
                 org_id=self._org_ids.get(session_id),
                 session_id=session_id,
                 system_prompt=self._settings.system_prompt,
-                recent_messages=[
-                    ChatMessageLike(role=m.role, content=m.content) for m in history
-                ],
+                recent_messages=[ChatMessageLike(role=m.role, content=m.content) for m in history],
                 query=query,
             )
             history = [_ChatMessage(role=m.role, content=m.content) for m in built]

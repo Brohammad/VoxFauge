@@ -51,9 +51,7 @@ async def test_agent_orchestrator_streams_final_response():
         orchestrator._graph, "ainvoke", new_callable=AsyncMock, return_value=mock_result
     ):
         tokens = []
-        async for event in orchestrator.generate_response(
-            session_id, on_agent_step=on_step
-        ):
+        async for event in orchestrator.generate_response(session_id, on_agent_step=on_step):
             if event.text:
                 tokens.append(event.text)
 

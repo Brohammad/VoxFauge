@@ -8,7 +8,10 @@ BUILTIN_POLICY_PRESETS: list[PolicyPreset] = [
     PolicyPreset(
         slug="strict-compliance",
         name="Strict Compliance",
-        description="Conservative policy-safe responses with a high quality bar and low escalation tolerance.",
+        description=(
+            "Conservative policy-safe responses with a high quality bar "
+            "and low escalation tolerance."
+        ),
         source="builtin",
         prompt_config={
             "system_prompt": (

@@ -23,18 +23,14 @@ def load_escalation_policy(config: dict, settings: Settings) -> EscalationPolicy
         fallback_to_human=bool(
             config.get("fallback_to_human", tool_config.get("fallback_to_human", True))
         ),
-        min_confidence=float(
-            config.get("min_confidence", settings.handoff_min_confidence)
-        ),
+        min_confidence=float(config.get("min_confidence", settings.handoff_min_confidence)),
         escalate_on_tool_failure=bool(
             config.get(
                 "escalate_on_tool_failure",
                 settings.handoff_escalate_on_tool_failure,
             )
         ),
-        max_tool_failures=int(
-            config.get("max_tool_failures", settings.handoff_max_tool_failures)
-        ),
+        max_tool_failures=int(config.get("max_tool_failures", settings.handoff_max_tool_failures)),
         escalate_on_critical_tool_failure=bool(
             config.get("escalate_on_critical_tool_failure", True)
         ),

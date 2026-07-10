@@ -28,7 +28,9 @@ class ExtractiveConversationSummarizer:
 
         lines: list[str] = []
         for message in messages:
-            role = message.role.value if isinstance(message.role, MessageRole) else str(message.role)
+            role = (
+                message.role.value if isinstance(message.role, MessageRole) else str(message.role)
+            )
             content = message.content.strip().replace("\n", " ")
             if len(content) > 240:
                 content = content[:237] + "..."

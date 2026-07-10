@@ -4,7 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from voxforge.api.dependencies import get_mcp_registry, get_session_manager, get_tool_router, require_scope
+from voxforge.api.dependencies import (
+    get_mcp_registry,
+    get_session_manager,
+    get_tool_router,
+    require_scope,
+)
 from voxforge.core.domain.auth import Principal
 from voxforge.core.domain.mcp import MCPRegistryHealth, MCPServerRecord
 from voxforge.core.domain.tools import ToolDefinition

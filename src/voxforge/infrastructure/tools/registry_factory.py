@@ -5,8 +5,8 @@ from voxforge.infrastructure.providers.support.factory import (
     create_knowledge_base_provider,
     create_ticketing_provider,
 )
-from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
 from voxforge.infrastructure.tools.handoff_tools import HandoffToHumanTool
+from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
 from voxforge.infrastructure.tools.support_tools import build_support_tools
 from voxforge.modules.handoff.application.orchestrator import HandoffOrchestrator
 from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry

@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from voxforge.config import Settings
 from voxforge.core.domain.knowledge import KnowledgeSearchRequest
 from voxforge.core.domain.support import KnowledgeArticle, KnowledgeSearchResult
-from voxforge.core.interfaces.support import KnowledgeBaseProvider
 from voxforge.infrastructure.db.knowledge_repository import KnowledgeRepository
 from voxforge.infrastructure.providers.embeddings.factory import create_embedding_provider
 from voxforge.infrastructure.tools.tool_context import tool_org_id
@@ -66,6 +65,7 @@ class InternalKnowledgeBaseProvider:
 
         async with self._session_factory() as session:
             from sqlalchemy import select
+
             from voxforge.infrastructure.db.models import KnowledgeChunkModel
 
             result = await session.execute(

@@ -1,8 +1,8 @@
 """PostgreSQL test helpers."""
 
-from alembic import command
 from alembic.config import Config
 
+from alembic import command
 from voxforge.config import get_settings
 
 

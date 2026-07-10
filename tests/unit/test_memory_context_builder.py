@@ -46,9 +46,7 @@ def test_context_builder_includes_summary_and_retrieval():
 
 def test_context_builder_trims_recent_messages():
     builder = ContextBuilder()
-    recent = [
-        ChatMessageLike(role=MessageRole.USER, content=f"msg-{i}") for i in range(15)
-    ]
+    recent = [ChatMessageLike(role=MessageRole.USER, content=f"msg-{i}") for i in range(15)]
 
     messages = builder.build(
         system_prompt="System",

@@ -8,9 +8,7 @@ import pytest
 
 pytestmark = [
     pytest.mark.postgres,
-    pytest.mark.skip(
-        reason="Knowledge base search not implemented — pending ADR-005 review"
-    ),
+    pytest.mark.skip(reason="Knowledge base search not implemented — pending ADR-005 review"),
 ]
 
 

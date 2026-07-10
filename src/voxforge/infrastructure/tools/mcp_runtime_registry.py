@@ -78,8 +78,7 @@ class MCPRuntimeRegistry:
                     self._register_failed_server(
                         server,
                         error=(
-                            f"Discovery timed out after "
-                            f"{self._settings.mcp_discovery_timeout_ms}ms"
+                            f"Discovery timed out after {self._settings.mcp_discovery_timeout_ms}ms"
                         ),
                     )
                 except Exception as exc:

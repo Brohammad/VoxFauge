@@ -71,10 +71,7 @@ def build_citation(
 
 def format_context_snippets(citations: list[Citation]) -> list[str]:
     """Format citations for HallucinationEvaluator context_snippets."""
-    return [
-        f"{c.citation_label} (relevance {c.similarity:.2f}): {c.excerpt}"
-        for c in citations
-    ]
+    return [f"{c.citation_label} (relevance {c.similarity:.2f}): {c.excerpt}" for c in citations]
 
 
 def compute_chunk_diff(

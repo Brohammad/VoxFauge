@@ -27,18 +27,22 @@ class RoundRobinAssignmentProvider:
     ) -> HandoffAssignment:
         _ = intent
         members = (
-            await self._session.execute(
-                select(UserModel)
-                .join(OrganizationMemberModel, OrganizationMemberModel.user_id == UserModel.id)
-                .where(
-                    OrganizationMemberModel.org_id == org_id,
-                    OrganizationMemberModel.role.in_(
-                        [OrgRole.OWNER.value, OrgRole.ADMIN.value, OrgRole.MEMBER.value]
-                    ),
+            (
+                await self._session.execute(
+                    select(UserModel)
+                    .join(OrganizationMemberModel, OrganizationMemberModel.user_id == UserModel.id)
+                    .where(
+                        OrganizationMemberModel.org_id == org_id,
+                        OrganizationMemberModel.role.in_(
+                            [OrgRole.OWNER.value, OrgRole.ADMIN.value, OrgRole.MEMBER.value]
+                        ),
+                    )
+                    .order_by(UserModel.created_at.asc())
                 )
-                .order_by(UserModel.created_at.asc())
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         if not members:
             return HandoffAssignment(handoff_id=handoff_id, strategy=strategy)

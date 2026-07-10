@@ -10,10 +10,10 @@ from voxforge.core.domain.handoff import (
     HandoffAssignment,
     HandoffPackage,
     HandoffRecord,
+    HandoffTrigger,
     TurnHandoffContext,
 )
 from voxforge.core.domain.handoff import HandoffDecision as HandoffDecisionModel
-from voxforge.core.domain.handoff import HandoffTrigger
 
 
 class HandoffPolicyEvaluator(Protocol):

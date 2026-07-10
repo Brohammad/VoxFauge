@@ -170,7 +170,9 @@ def build_sp_initiated_login_redirect(
     authn_request_id = request_id or f"_{secrets.token_hex(16)}"
     authn_request_xml = build_authn_request_xml(connection, request_id=authn_request_id)
     encoded_request = encode_saml_redirect_binding(authn_request_xml)
-    query = urlencode({"SAMLRequest": encoded_request, "RelayState": relay_state}, quote_via=quote_plus)
+    query = urlencode(
+        {"SAMLRequest": encoded_request, "RelayState": relay_state}, quote_via=quote_plus
+    )
     redirect_url = _append_query(connection.idp_sso_url, query)
     return SamlLoginRedirect(
         connection_id=connection.id,

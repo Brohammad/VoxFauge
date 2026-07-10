@@ -30,16 +30,26 @@ class DashboardRepository:
         self._session = session
 
     async def get_overview(self, org_id: UUID) -> DashboardOverview:
-        sessions_q = select(func.count()).select_from(VoiceSessionModel).where(
-            VoiceSessionModel.org_id == org_id
+        sessions_q = (
+            select(func.count())
+            .select_from(VoiceSessionModel)
+            .where(VoiceSessionModel.org_id == org_id)
         )
-        active_q = select(func.count()).select_from(VoiceSessionModel).where(
-            VoiceSessionModel.org_id == org_id,
-            VoiceSessionModel.status == "active",
+        active_q = (
+            select(func.count())
+            .select_from(VoiceSessionModel)
+            .where(
+                VoiceSessionModel.org_id == org_id,
+                VoiceSessionModel.status == "active",
+            )
         )
-        completed_q = select(func.count()).select_from(VoiceSessionModel).where(
-            VoiceSessionModel.org_id == org_id,
-            VoiceSessionModel.status == "completed",
+        completed_q = (
+            select(func.count())
+            .select_from(VoiceSessionModel)
+            .where(
+                VoiceSessionModel.org_id == org_id,
+                VoiceSessionModel.status == "completed",
+            )
         )
         messages_q = (
             select(func.count())
@@ -47,11 +57,13 @@ class DashboardRepository:
             .join(VoiceSessionModel, MessageModel.session_id == VoiceSessionModel.id)
             .where(VoiceSessionModel.org_id == org_id)
         )
-        tools_q = select(func.count()).select_from(ToolCallModel).where(
-            ToolCallModel.org_id == org_id
+        tools_q = (
+            select(func.count()).select_from(ToolCallModel).where(ToolCallModel.org_id == org_id)
         )
-        evals_q = select(func.count()).select_from(EvaluationRunModel).where(
-            EvaluationRunModel.org_id == org_id
+        evals_q = (
+            select(func.count())
+            .select_from(EvaluationRunModel)
+            .where(EvaluationRunModel.org_id == org_id)
         )
         avg_e2e_q = (
             select(func.avg(SessionMetricModel.value_ms))
@@ -64,9 +76,13 @@ class DashboardRepository:
         avg_score_q = select(func.avg(EvaluationRunModel.overall_score)).where(
             EvaluationRunModel.org_id == org_id
         )
-        failed_q = select(func.count()).select_from(EvaluationRunModel).where(
-            EvaluationRunModel.org_id == org_id,
-            EvaluationRunModel.overall_status == "failed",
+        failed_q = (
+            select(func.count())
+            .select_from(EvaluationRunModel)
+            .where(
+                EvaluationRunModel.org_id == org_id,
+                EvaluationRunModel.overall_status == "failed",
+            )
         )
         cost_q = (
             select(func.sum(EvaluationMetricModel.value))
@@ -240,9 +256,7 @@ class DashboardRepository:
             by_metric=by_metric,
         )
 
-    async def get_recent_activity(
-        self, org_id: UUID, *, limit: int = 30
-    ) -> list[ActivityItem]:
+    async def get_recent_activity(self, org_id: UUID, *, limit: int = 30) -> list[ActivityItem]:
         since = datetime.now(UTC) - timedelta(days=7)
         items: list[ActivityItem] = []
 
@@ -364,9 +378,7 @@ class DashboardRepository:
             trend=trend,
         )
 
-    async def _get_outcome_trend(
-        self, org_id: UUID, *, days: int = 7
-    ) -> list[OutcomeTrendPoint]:
+    async def _get_outcome_trend(self, org_id: UUID, *, days: int = 7) -> list[OutcomeTrendPoint]:
         since = datetime.now(UTC) - timedelta(days=days)
         result = await self._session.execute(
             select(

@@ -29,9 +29,7 @@ class DashboardService:
     async def get_evaluation_summary(self, org_id: UUID) -> EvaluationSummary:
         return await self._repo.get_evaluation_summary(org_id)
 
-    async def get_recent_activity(
-        self, org_id: UUID, *, limit: int = 30
-    ) -> list[ActivityItem]:
+    async def get_recent_activity(self, org_id: UUID, *, limit: int = 30) -> list[ActivityItem]:
         return await self._repo.get_recent_activity(org_id, limit=limit)
 
     async def get_outcome_summary(self, org_id: UUID, *, days: int = 7) -> OutcomeSummary:

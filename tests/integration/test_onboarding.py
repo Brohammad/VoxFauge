@@ -75,9 +75,7 @@ async def test_onboarding_and_template_endpoints(auth_client):
     assert len(outcomes["trend"]) >= 1
     assert outcomes["trend"][0]["total_sessions"] == 2
 
-    outcomes_30d_resp = await auth_client.get(
-        "/api/v1/dashboard/outcomes?days=30", headers=headers
-    )
+    outcomes_30d_resp = await auth_client.get("/api/v1/dashboard/outcomes?days=30", headers=headers)
     assert outcomes_30d_resp.status_code == 200
     assert outcomes_30d_resp.json()["trend"][0]["total_sessions"] == 2
 

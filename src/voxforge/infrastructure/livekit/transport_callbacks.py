@@ -55,9 +55,7 @@ def build_livekit_callbacks(
     async def on_error(code: str, message: str) -> None:
         logger.warning("livekit_pipeline_error", code=code, message=message)
         if on_data_message:
-            await _maybe_await(
-                on_data_message({"type": "error", "code": code, "message": message})
-            )
+            await _maybe_await(on_data_message({"type": "error", "code": code, "message": message}))
 
     async def on_agent_step(agent: str, status: str, payload: dict) -> None:
         if on_data_message:

@@ -7,6 +7,7 @@ from uuid import uuid4
 import pytest
 from lxml import etree
 
+from tests.helpers.saml_fixtures import build_signed_saml_response, generate_idp_key_and_cert
 from voxforge.core.domain.auth import OrgRole
 from voxforge.core.domain.sso import (
     SamlConnection,
@@ -24,7 +25,6 @@ from voxforge.infrastructure.security.saml import (
     resolve_role_from_mapping,
     validate_saml_response,
 )
-from tests.helpers.saml_fixtures import build_signed_saml_response, generate_idp_key_and_cert
 
 DS_NS = "http://www.w3.org/2000/09/xmldsig#"
 

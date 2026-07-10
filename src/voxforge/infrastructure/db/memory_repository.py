@@ -59,8 +59,7 @@ class MemoryRepository:
         if dialect == "postgresql" and embedding:
             await self._session.execute(
                 text(
-                    "UPDATE memory_entries SET embedding_vec = CAST(:vec AS vector) "
-                    "WHERE id = :id"
+                    "UPDATE memory_entries SET embedding_vec = CAST(:vec AS vector) WHERE id = :id"
                 ),
                 {"vec": _pgvector_literal(embedding), "id": str(entry_id)},
             )
@@ -155,9 +154,7 @@ class MemoryRepository:
                 scored.append((similarity, model))
 
         scored.sort(key=lambda item: item[0], reverse=True)
-        return [
-            self._to_entry(model, similarity=score) for score, model in scored[:limit]
-        ]
+        return [self._to_entry(model, similarity=score) for score, model in scored[:limit]]
 
     async def list_entries(
         self,

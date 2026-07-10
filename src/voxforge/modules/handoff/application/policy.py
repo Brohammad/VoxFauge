@@ -168,9 +168,7 @@ class HandoffPolicyEngine:
                 should_escalate=True,
                 trigger=HandoffTrigger.CONFIDENCE_THRESHOLD,
                 confidence=confidence,
-                reason=(
-                    f"confidence {confidence:.2f} below threshold {policy.min_confidence:.2f}"
-                ),
+                reason=(f"confidence {confidence:.2f} below threshold {policy.min_confidence:.2f}"),
             )
 
         if context.interrupted:

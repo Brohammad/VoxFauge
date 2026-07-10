@@ -36,37 +36,53 @@ class ReplayRepository:
             raise SessionNotFoundError(str(session_id))
 
         messages = (
-            await self._session.execute(
-                select(MessageModel)
-                .where(MessageModel.session_id == session_id)
-                .order_by(MessageModel.created_at.asc())
+            (
+                await self._session.execute(
+                    select(MessageModel)
+                    .where(MessageModel.session_id == session_id)
+                    .order_by(MessageModel.created_at.asc())
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         tool_calls = (
-            await self._session.execute(
-                select(ToolCallModel)
-                .where(ToolCallModel.session_id == session_id)
-                .order_by(ToolCallModel.created_at.asc())
+            (
+                await self._session.execute(
+                    select(ToolCallModel)
+                    .where(ToolCallModel.session_id == session_id)
+                    .order_by(ToolCallModel.created_at.asc())
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         evaluations = (
-            await self._session.execute(
-                select(EvaluationRunModel)
-                .where(EvaluationRunModel.session_id == session_id)
-                .options(selectinload(EvaluationRunModel.metrics))
-                .order_by(EvaluationRunModel.created_at.asc())
+            (
+                await self._session.execute(
+                    select(EvaluationRunModel)
+                    .where(EvaluationRunModel.session_id == session_id)
+                    .options(selectinload(EvaluationRunModel.metrics))
+                    .order_by(EvaluationRunModel.created_at.asc())
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         metrics = (
-            await self._session.execute(
-                select(SessionMetricModel)
-                .where(SessionMetricModel.session_id == session_id)
-                .order_by(SessionMetricModel.recorded_at.asc())
+            (
+                await self._session.execute(
+                    select(SessionMetricModel)
+                    .where(SessionMetricModel.session_id == session_id)
+                    .order_by(SessionMetricModel.recorded_at.asc())
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         outcome_model = (
             await self._session.execute(
@@ -77,12 +93,16 @@ class ReplayRepository:
         handoff_event_rows: list[HandoffEventModel] = []
         if getattr(session_model, "handoff_id", None) is not None:
             handoff_event_rows = (
-                await self._session.execute(
-                    select(HandoffEventModel)
-                    .where(HandoffEventModel.handoff_id == session_model.handoff_id)
-                    .order_by(HandoffEventModel.created_at.asc())
+                (
+                    await self._session.execute(
+                        select(HandoffEventModel)
+                        .where(HandoffEventModel.handoff_id == session_model.handoff_id)
+                        .order_by(HandoffEventModel.created_at.asc())
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
 
         events: list[SessionReplayEvent] = []
 

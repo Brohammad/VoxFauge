@@ -148,8 +148,7 @@ class OnboardingService:
             slug="customer-support-deflection",
             prompt_config={
                 "system_prompt": (
-                    "You are a support voice agent focused on rapid resolution "
-                    "and safe escalation."
+                    "You are a support voice agent focused on rapid resolution and safe escalation."
                 ),
                 "style": "concise, empathetic, policy-safe",
             },
