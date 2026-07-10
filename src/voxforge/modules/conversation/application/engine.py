@@ -24,10 +24,12 @@ class ConversationEngine:
         llm_provider: LLMProvider,
         settings: Settings,
         memory_service: Any | None = None,
+        knowledge_context_builder: Any | None = None,
     ) -> None:
         self._llm = llm_provider
         self._settings = settings
         self._memory = memory_service
+        self._knowledge_context = knowledge_context_builder
         self._history: dict[UUID, list[_ChatMessage]] = {}
         self._org_ids: dict[UUID, UUID | None] = {}
 
@@ -70,17 +72,28 @@ class ConversationEngine:
         model = model or self._settings.default_llm_model
         query = _last_user_message(history)
 
+        org_id = self._org_ids.get(session_id)
         if self._memory:
             from voxforge.modules.memory.application.context_builder import ChatMessageLike
 
             built = await self._memory.build_messages_for_llm(
-                org_id=self._org_ids.get(session_id),
+                org_id=org_id,
                 session_id=session_id,
                 system_prompt=self._settings.system_prompt,
                 recent_messages=[ChatMessageLike(role=m.role, content=m.content) for m in history],
                 query=query,
             )
             history = [_ChatMessage(role=m.role, content=m.content) for m in built]
+
+        if self._knowledge_context and self._settings.knowledge_context_enabled:
+            from voxforge.modules.memory.application.context_builder import ChatMessageLike
+
+            enriched = await self._knowledge_context.enrich_messages(
+                [ChatMessageLike(role=m.role, content=m.content) for m in history],
+                org_id=org_id,
+                query=query,
+            )
+            history = [_ChatMessage(role=m.role, content=m.content) for m in enriched]
 
         logger.info("conversation_generate", session_id=str(session_id), model=model)
         async for event in self._llm.generate_stream(history, model=model):

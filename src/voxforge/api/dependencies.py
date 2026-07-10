@@ -46,6 +46,7 @@ from voxforge.modules.handoff.application.orchestrator import HandoffOrchestrato
 from voxforge.modules.handoff.application.policy import HandoffPolicyEngine
 from voxforge.modules.handoff.application.replay_link import ReplayLinkService
 from voxforge.modules.handoff.application.summarizer import ExtractiveConversationSummarizer
+from voxforge.modules.knowledge.application.factory import create_knowledge_context_builder
 from voxforge.modules.knowledge.application.ingestion_service import KnowledgeIngestionService
 from voxforge.modules.knowledge.application.search_service import KnowledgeSearchService
 from voxforge.modules.mcp_tool_router.application.router import ToolRouter
@@ -287,6 +288,13 @@ def get_knowledge_ingestion_service(
     )
 
 
+def get_knowledge_context_builder(
+    db: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+):
+    return create_knowledge_context_builder(db, settings)
+
+
 def get_mcp_registry(request: Request) -> MCPRuntimeRegistry | None:
     return getattr(request.app.state, "mcp_registry", None)
 
@@ -384,8 +392,15 @@ def get_response_generator(
     settings: Settings = Depends(get_settings),
     memory_service: MemoryService | None = Depends(get_memory_service),
     tool_router: ToolRouter | None = Depends(get_tool_router),
+    knowledge_context_builder=Depends(get_knowledge_context_builder),
 ):
-    return create_response_generator(settings, llm, memory_service, tool_router)
+    return create_response_generator(
+        settings,
+        llm,
+        memory_service,
+        tool_router,
+        knowledge_context_builder,
+    )
 
 
 def get_pipeline(
@@ -399,6 +414,7 @@ def get_pipeline(
     outcome_service: OutcomeExtractionService = Depends(get_outcome_service),
     handoff_orchestrator: HandoffOrchestrator | None = Depends(get_handoff_orchestrator),
     handoff_policy: HandoffPolicyEngine | None = Depends(get_handoff_policy_engine),
+    knowledge_context_builder=Depends(get_knowledge_context_builder),
 ) -> VoicePipelineService:
     return VoicePipelineService(
         session_manager,
@@ -411,6 +427,7 @@ def get_pipeline(
         outcome_service,
         handoff_orchestrator=handoff_orchestrator,
         handoff_policy=handoff_policy,
+        knowledge_context_builder=knowledge_context_builder,
     )
 
 

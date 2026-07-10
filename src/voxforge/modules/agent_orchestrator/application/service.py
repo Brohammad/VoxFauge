@@ -28,6 +28,7 @@ class AgentOrchestrator:
         settings: Settings,
         memory_service: Any | None = None,
         tool_router: Any | None = None,
+        knowledge_context_builder: Any | None = None,
     ) -> None:
         self._settings = settings
         self._tool_router = tool_router
@@ -35,6 +36,7 @@ class AgentOrchestrator:
         self._history: dict[UUID, list[_ChatMessage]] = {}
         self._traces: dict[UUID, list[dict]] = {}
         self._memory = memory_service
+        self._knowledge_context = knowledge_context_builder
         self._org_ids: dict[UUID, UUID | None] = {}
         self._caller_scopes: dict[UUID, list[str]] = {}
 
@@ -77,17 +79,28 @@ class AgentOrchestrator:
         history = self._history.get(session_id, [])
         user_input = _last_user_message(history)
 
+        org_id = self._org_ids.get(session_id)
         if self._memory:
             from voxforge.modules.memory.application.context_builder import ChatMessageLike
 
             built = await self._memory.build_messages_for_llm(
-                org_id=self._org_ids.get(session_id),
+                org_id=org_id,
                 session_id=session_id,
                 system_prompt=self._settings.system_prompt,
                 recent_messages=[ChatMessageLike(role=m.role, content=m.content) for m in history],
                 query=user_input,
             )
             history = [_ChatMessage(role=m.role, content=m.content) for m in built]
+
+        if self._knowledge_context and self._settings.knowledge_context_enabled:
+            from voxforge.modules.memory.application.context_builder import ChatMessageLike
+
+            enriched = await self._knowledge_context.enrich_messages(
+                [ChatMessageLike(role=m.role, content=m.content) for m in history],
+                org_id=org_id,
+                query=user_input,
+            )
+            history = [_ChatMessage(role=m.role, content=m.content) for m in enriched]
 
         messages = [{"role": m.role.value, "content": m.content} for m in history]
 

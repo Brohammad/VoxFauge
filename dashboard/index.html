@@ -16,6 +16,8 @@
       <nav>
         <a href="#overview" class="nav-link active" data-section="overview">Overview</a>
         <a href="#onboarding" class="nav-link" data-section="onboarding">Onboarding</a>
+        <a href="#knowledge" class="nav-link" data-section="knowledge">Knowledge Base</a>
+        <a href="#handoffs" class="nav-link" data-section="handoffs">Handoffs</a>
         <a href="#alerts" class="nav-link" data-section="alerts">Alerts</a>
         <a href="#policies" class="nav-link" data-section="policies">Policy Presets</a>
         <a href="#sso" class="nav-link" data-section="sso">SSO</a>
@@ -69,6 +71,130 @@
           </div>
           <div id="onboarding-status" class="card-sub">No onboarding run yet.</div>
           <pre id="onboarding-json" class="json-preview"></pre>
+        </div>
+      </section>
+
+      <section id="knowledge" class="section hidden">
+        <div class="panel">
+          <h2>Knowledge Base</h2>
+          <p>Upload documents for semantic retrieval and pre-turn agent grounding.</p>
+          <div id="knowledge-status" class="card-sub">Connect with a JWT to manage knowledge collections.</div>
+          <div class="button-row">
+            <button id="knowledge-refresh-btn" type="button">Refresh</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Collections</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Dimensions</th>
+                  <th>Created</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="knowledge-collections-body"></tbody>
+            </table>
+          </div>
+          <form id="knowledge-collection-form" class="sso-form">
+            <label class="full-width">
+              New collection name
+              <input id="knowledge-collection-name" type="text" placeholder="Support Docs" required />
+            </label>
+            <div class="button-row">
+              <button type="submit">Create Collection</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <h2>Upload Document</h2>
+          <form id="knowledge-upload-form" class="sso-form">
+            <label>
+              Collection
+              <select id="knowledge-upload-collection" required></select>
+            </label>
+            <label>
+              Title (optional)
+              <input id="knowledge-upload-title" type="text" placeholder="Refund Policy" />
+            </label>
+            <label class="full-width">
+              File
+              <input id="knowledge-upload-file" type="file" accept=".pdf,.txt,.md,.csv,.html,.docx" required />
+            </label>
+            <div class="button-row">
+              <button type="submit">Upload</button>
+            </div>
+          </form>
+          <div id="knowledge-upload-status" class="card-sub">No upload in progress.</div>
+        </div>
+
+        <div class="panel">
+          <h2>Recent Uploads</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Document</th>
+                  <th>Status</th>
+                  <th>Progress</th>
+                  <th>Stage</th>
+                  <th>Updated</th>
+                </tr>
+              </thead>
+              <tbody id="knowledge-uploads-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Search Test</h2>
+          <form id="knowledge-search-form" class="sso-form">
+            <label class="full-width">
+              Query
+              <input id="knowledge-search-query" type="text" placeholder="What is the refund policy?" required />
+            </label>
+            <div class="button-row">
+              <button type="submit">Search</button>
+            </div>
+          </form>
+          <ul id="knowledge-search-results" class="activity-list"></ul>
+        </div>
+      </section>
+
+      <section id="handoffs" class="section hidden">
+        <div class="panel">
+          <h2>Handoff Queue</h2>
+          <p>Pending human escalations for your organization.</p>
+          <div class="button-row">
+            <button id="handoffs-refresh-btn" type="button">Refresh Queue</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Handoff</th>
+                  <th>Session</th>
+                  <th>Status</th>
+                  <th>Trigger</th>
+                  <th>Ticket</th>
+                  <th>Assigned</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="handoffs-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Handoff Context</h2>
+          <div id="handoff-context-summary" class="card-sub">Select a handoff to view context.</div>
+          <pre id="handoff-context-json" class="json-preview"></pre>
         </div>
       </section>
 

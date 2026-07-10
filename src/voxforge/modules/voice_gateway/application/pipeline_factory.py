@@ -29,6 +29,7 @@ from voxforge.modules.handoff.application.orchestrator import HandoffOrchestrato
 from voxforge.modules.handoff.application.policy import HandoffPolicyEngine
 from voxforge.modules.handoff.application.replay_link import ReplayLinkService
 from voxforge.modules.handoff.application.summarizer import ExtractiveConversationSummarizer
+from voxforge.modules.knowledge.application.factory import create_knowledge_context_builder
 from voxforge.modules.mcp_tool_router.application.router import ToolRouter
 from voxforge.modules.memory.application.service import MemoryService
 from voxforge.modules.outcomes.application.service import OutcomeExtractionService
@@ -93,7 +94,15 @@ def build_voice_pipeline_bundle(
             ToolCallRepository(db_session),
         )
 
-    response_generator = create_response_generator(settings, llm, memory_service, tool_router)
+    knowledge_context_builder = create_knowledge_context_builder(db_session, settings)
+
+    response_generator = create_response_generator(
+        settings,
+        llm,
+        memory_service,
+        tool_router,
+        knowledge_context_builder,
+    )
 
     evaluation_engine: EvaluationEngine | None = None
     if settings.evaluation_enabled:
@@ -113,6 +122,7 @@ def build_voice_pipeline_bundle(
         outcome_service,
         handoff_orchestrator=handoff_orchestrator,
         handoff_policy=handoff_policy,
+        knowledge_context_builder=knowledge_context_builder,
     )
     return VoicePipelineBundle(
         session_manager=session_manager,

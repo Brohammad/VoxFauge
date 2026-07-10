@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from voxforge.modules.evaluation.application.service import EvaluationEngine
     from voxforge.modules.handoff.application.orchestrator import HandoffOrchestrator
     from voxforge.modules.handoff.application.policy import HandoffPolicyEngine
+    from voxforge.modules.knowledge.application.context_builder import KnowledgeContextBuilder
     from voxforge.modules.memory.application.service import MemoryService
     from voxforge.modules.outcomes.application.service import OutcomeExtractionService
 
@@ -58,6 +59,7 @@ class VoicePipelineService:
         outcome_service: "OutcomeExtractionService | None" = None,
         handoff_orchestrator: "HandoffOrchestrator | None" = None,
         handoff_policy: "HandoffPolicyEngine | None" = None,
+        knowledge_context_builder: "KnowledgeContextBuilder | None" = None,
     ) -> None:
         self._sessions = session_manager
         self._stt = stt_provider
@@ -69,6 +71,7 @@ class VoicePipelineService:
         self._outcomes = outcome_service
         self._handoff = handoff_orchestrator
         self._handoff_policy = handoff_policy
+        self._knowledge_context = knowledge_context_builder
         self._session_orgs: dict[UUID, UUID] = {}
         self._interrupt_event: asyncio.Event | None = None
         self._pipeline_task: asyncio.Task | None = None
@@ -314,6 +317,16 @@ class VoicePipelineService:
                 if memory_ctx.summary:
                     context_snippets.append(memory_ctx.summary)
                 context_snippets.extend(e.content for e in memory_ctx.relevant_entries)
+            if (
+                self._knowledge_context
+                and org_id is not None
+                and self._settings.knowledge_context_enabled
+            ):
+                kb_snippets = await self._knowledge_context.retrieve_snippets(
+                    org_id=org_id,
+                    query=transcript,
+                )
+                context_snippets.extend(kb_snippets)
             evaluation_run = await self._evaluation.evaluate_turn(
                 TurnEvaluationInput(
                     session_id=session_id,

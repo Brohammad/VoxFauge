@@ -45,7 +45,28 @@ const els = {
   ssoDefaultRole: document.getElementById("sso-default-role"),
   ssoRoleMapping: document.getElementById("sso-role-mapping"),
   ssoLoginPreview: document.getElementById("sso-login-preview"),
+  knowledgeStatus: document.getElementById("knowledge-status"),
+  knowledgeRefreshBtn: document.getElementById("knowledge-refresh-btn"),
+  knowledgeCollectionsBody: document.getElementById("knowledge-collections-body"),
+  knowledgeCollectionForm: document.getElementById("knowledge-collection-form"),
+  knowledgeCollectionName: document.getElementById("knowledge-collection-name"),
+  knowledgeUploadForm: document.getElementById("knowledge-upload-form"),
+  knowledgeUploadCollection: document.getElementById("knowledge-upload-collection"),
+  knowledgeUploadTitle: document.getElementById("knowledge-upload-title"),
+  knowledgeUploadFile: document.getElementById("knowledge-upload-file"),
+  knowledgeUploadStatus: document.getElementById("knowledge-upload-status"),
+  knowledgeUploadsBody: document.getElementById("knowledge-uploads-body"),
+  knowledgeSearchForm: document.getElementById("knowledge-search-form"),
+  knowledgeSearchQuery: document.getElementById("knowledge-search-query"),
+  knowledgeSearchResults: document.getElementById("knowledge-search-results"),
+  handoffsRefreshBtn: document.getElementById("handoffs-refresh-btn"),
+  handoffsBody: document.getElementById("handoffs-body"),
+  handoffContextSummary: document.getElementById("handoff-context-summary"),
+  handoffContextJson: document.getElementById("handoff-context-json"),
 };
+
+let kbRecentUploads = JSON.parse(localStorage.getItem("voxforge_kb_uploads") || "[]");
+let kbPollTimer = null;
 
 els.tokenInput.value = token;
 
@@ -626,6 +647,190 @@ async function loadSso() {
   renderSsoConnections(connections);
 }
 
+function saveKbRecentUploads() {
+  localStorage.setItem("voxforge_kb_uploads", JSON.stringify(kbRecentUploads.slice(0, 20)));
+}
+
+async function knowledgeApi(path, options = {}) {
+  const res = await fetch(`/api/v1/knowledge${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${res.status}: ${body}`);
+  }
+  if (res.status === 204) return null;
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return res.json();
+  }
+  return res.text();
+}
+
+async function handoffsApi(path, options = {}) {
+  const res = await fetch(`/api/v1/handoffs${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${res.status}: ${body}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+function renderKnowledgeCollections(collections) {
+  if (!els.knowledgeCollectionsBody || !els.knowledgeUploadCollection) return;
+
+  els.knowledgeCollectionsBody.innerHTML = collections.map((collection) => `
+    <tr>
+      <td>${escapeHtml(collection.name)}</td>
+      <td>${collection.embedding_dimensions}</td>
+      <td>${fmtDate(collection.created_at)}</td>
+      <td><button type="button" class="link-btn" data-kb-collection="${collection.id}">Use</button></td>
+    </tr>
+  `).join("") || "<tr><td colspan='4'>No collections yet</td></tr>";
+
+  els.knowledgeUploadCollection.innerHTML = collections.map((collection) => `
+    <option value="${collection.id}">${escapeHtml(collection.name)}</option>
+  `).join("") || "<option value=''>Create a collection first</option>";
+
+  els.knowledgeCollectionsBody.querySelectorAll("[data-kb-collection]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      els.knowledgeUploadCollection.value = btn.dataset.kbCollection;
+      showSection("knowledge");
+    });
+  });
+}
+
+function renderKnowledgeUploads() {
+  if (!els.knowledgeUploadsBody) return;
+  els.knowledgeUploadsBody.innerHTML = kbRecentUploads.map((item) => `
+    <tr>
+      <td><code>${shortId(item.document_id)}</code>${item.title ? ` · ${escapeHtml(item.title)}` : ""}</td>
+      <td><span class="status-pill ${item.status || "queued"}">${escapeHtml(item.status || "queued")}</span></td>
+      <td>${item.progress_pct ?? 0}%</td>
+      <td>${escapeHtml(item.stage || "—")}</td>
+      <td>${fmtDate(item.updated_at || item.uploaded_at)}</td>
+    </tr>
+  `).join("") || "<tr><td colspan='5'>No uploads yet</td></tr>";
+}
+
+async function refreshKnowledgeUploadStatuses() {
+  if (!kbRecentUploads.length) {
+    renderKnowledgeUploads();
+    return;
+  }
+
+  const updated = await Promise.all(kbRecentUploads.map(async (item) => {
+    try {
+      const [document, jobs] = await Promise.all([
+        knowledgeApi(`/documents/${item.document_id}`),
+        knowledgeApi(`/documents/${item.document_id}/jobs`),
+      ]);
+      const latestJob = (jobs || [])[0];
+      return {
+        ...item,
+        title: document.title || item.title,
+        status: latestJob?.status || document.status,
+        progress_pct: latestJob?.progress_pct ?? item.progress_pct ?? 0,
+        stage: latestJob?.stage || item.stage || null,
+        updated_at: new Date().toISOString(),
+        error_message: latestJob?.error_message || null,
+      };
+    } catch {
+      return item;
+    }
+  }));
+
+  kbRecentUploads = updated;
+  saveKbRecentUploads();
+  renderKnowledgeUploads();
+}
+
+async function loadKnowledge() {
+  await ensureOrgId();
+  if (els.knowledgeStatus) {
+    els.knowledgeStatus.textContent = `Organization ${orgId}`;
+  }
+  const collections = await knowledgeApi("/collections");
+  renderKnowledgeCollections(collections);
+  await refreshKnowledgeUploadStatuses();
+}
+
+function scheduleKnowledgePolling() {
+  if (kbPollTimer) clearInterval(kbPollTimer);
+  kbPollTimer = setInterval(() => {
+    if (!token || !kbRecentUploads.length) return;
+    refreshKnowledgeUploadStatuses().catch(() => {});
+  }, 5000);
+}
+
+function renderKnowledgeSearchResults(results) {
+  if (!els.knowledgeSearchResults) return;
+  els.knowledgeSearchResults.innerHTML = (results || []).map((result) => `
+    <li>
+      <div><strong>${escapeHtml(result.citation.citation_label)}</strong> · ${result.similarity.toFixed(2)}</div>
+      <div class="card-sub">${escapeHtml(result.citation.excerpt)}</div>
+    </li>
+  `).join("") || "<li class='card-sub'>No matching chunks found.</li>";
+}
+
+async function loadHandoffs() {
+  const handoffs = await handoffsApi("");
+  if (!els.handoffsBody) return;
+
+  els.handoffsBody.innerHTML = handoffs.map((handoff) => `
+    <tr>
+      <td><code>${shortId(handoff.id)}</code></td>
+      <td><code>${shortId(handoff.session_id)}</code></td>
+      <td><span class="status-pill ${handoff.status}">${escapeHtml(handoff.status)}</span></td>
+      <td>${escapeHtml(handoff.trigger)}</td>
+      <td>${escapeHtml(handoff.ticket_id || "—")}</td>
+      <td>${escapeHtml(handoff.assigned_to_email || "—")}</td>
+      <td>
+        <button type="button" class="link-btn" data-handoff-view="${handoff.id}">Context</button>
+        ${handoff.status === "pending" ? `<button type="button" class="link-btn" data-handoff-accept="${handoff.id}">Accept</button>` : ""}
+      </td>
+    </tr>
+  `).join("") || "<tr><td colspan='7'>No handoffs yet</td></tr>";
+
+  els.handoffsBody.querySelectorAll("[data-handoff-view]").forEach((btn) => {
+    btn.addEventListener("click", () => loadHandoffContext(btn.dataset.handoffView));
+  });
+  els.handoffsBody.querySelectorAll("[data-handoff-accept]").forEach((btn) => {
+    btn.addEventListener("click", () => acceptHandoff(btn.dataset.handoffAccept));
+  });
+}
+
+async function loadHandoffContext(handoffId) {
+  const context = await handoffsApi(`/${handoffId}/context`);
+  if (els.handoffContextSummary) {
+    els.handoffContextSummary.textContent = [
+      `Handoff ${shortId(context.handoff_id)}`,
+      `session=${shortId(context.session_id)}`,
+      `status=${context.status}`,
+    ].join(" · ");
+  }
+  if (els.handoffContextJson) {
+    els.handoffContextJson.textContent = JSON.stringify(context, null, 2);
+  }
+}
+
+async function acceptHandoff(handoffId) {
+  await handoffsApi(`/${handoffId}/accept`, { method: "POST" });
+  await loadHandoffs();
+}
+
 function renderOnboardingStatus(run) {
   if (!run) {
     els.onboardingStatus.textContent = "No onboarding run yet.";
@@ -741,6 +946,108 @@ els.onboardingStatusBtn?.addEventListener("click", async () => {
   }
 });
 
+els.knowledgeRefreshBtn?.addEventListener("click", async () => {
+  try {
+    clearError();
+    await loadKnowledge();
+  } catch (err) {
+    showError(err.message);
+  }
+});
+
+els.knowledgeCollectionForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    clearError();
+    const name = els.knowledgeCollectionName?.value.trim();
+    if (!name) return;
+    await knowledgeApi("/collections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    els.knowledgeCollectionForm.reset();
+    await loadKnowledge();
+  } catch (err) {
+    showError(err.message);
+  }
+});
+
+els.knowledgeUploadForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    clearError();
+    const collectionId = els.knowledgeUploadCollection?.value;
+    const file = els.knowledgeUploadFile?.files?.[0];
+    if (!collectionId || !file) {
+      throw new Error("Select a collection and file to upload");
+    }
+    const formData = new FormData();
+    formData.append("file", file);
+    const title = els.knowledgeUploadTitle?.value.trim();
+    if (title) formData.append("title", title);
+
+    if (els.knowledgeUploadStatus) {
+      els.knowledgeUploadStatus.textContent = `Uploading ${file.name}...`;
+    }
+
+    const result = await knowledgeApi(`/collections/${collectionId}/documents`, {
+      method: "POST",
+      body: formData,
+    });
+
+    kbRecentUploads.unshift({
+      document_id: result.document_id,
+      job_id: result.job_id,
+      title: title || file.name,
+      collection_id: collectionId,
+      status: result.status,
+      progress_pct: 0,
+      uploaded_at: new Date().toISOString(),
+    });
+    saveKbRecentUploads();
+    renderKnowledgeUploads();
+    scheduleKnowledgePolling();
+    await refreshKnowledgeUploadStatuses();
+
+    if (els.knowledgeUploadStatus) {
+      els.knowledgeUploadStatus.textContent = `Upload queued · document ${shortId(result.document_id)} · job ${shortId(result.job_id)}`;
+    }
+    els.knowledgeUploadForm.reset();
+  } catch (err) {
+    if (els.knowledgeUploadStatus) {
+      els.knowledgeUploadStatus.textContent = "Upload failed.";
+    }
+    showError(err.message);
+  }
+});
+
+els.knowledgeSearchForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    clearError();
+    const query = els.knowledgeSearchQuery?.value.trim();
+    if (!query) return;
+    const response = await knowledgeApi("/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, limit: 5 }),
+    });
+    renderKnowledgeSearchResults(response.results || []);
+  } catch (err) {
+    showError(err.message);
+  }
+});
+
+els.handoffsRefreshBtn?.addEventListener("click", async () => {
+  try {
+    clearError();
+    await loadHandoffs();
+  } catch (err) {
+    showError(err.message);
+  }
+});
+
 els.replayLoadBtn?.addEventListener("click", async () => {
   try {
     clearError();
@@ -792,6 +1099,13 @@ document.querySelectorAll(".nav-link").forEach((link) => {
       if (link.dataset.section === "onboarding") {
         await loadOnboardingStatus();
       }
+      if (link.dataset.section === "knowledge") {
+        await loadKnowledge();
+        scheduleKnowledgePolling();
+      }
+      if (link.dataset.section === "handoffs") {
+        await loadHandoffs();
+      }
     } catch (err) {
       showError(err.message);
     }
@@ -803,6 +1117,7 @@ setTrendDays(trendDays);
 if (token) {
   refreshAll();
   loadOnboardingStatus().catch(() => {});
+  scheduleKnowledgePolling();
 }
 
 setInterval(() => { if (token) refreshAll(); }, 30000);

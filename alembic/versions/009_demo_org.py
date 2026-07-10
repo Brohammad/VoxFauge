@@ -20,7 +20,7 @@ depends_on: str | Sequence[str] | None = None
 DEMO_ORG_ID = uuid.UUID("a0000000-0000-4000-8000-000000000001")
 DEMO_USER_ID = uuid.UUID("a0000000-0000-4000-8000-000000000002")
 DEMO_PASSWORD_HASH = "$2b$12$5CZr.Mp7zjMklErNvL9wmOZnaV2qO5Z1pq2xe4oq8zbh43pDGdIT6"
-NOW = datetime.now(UTC)
+NOW = datetime.now(UTC).replace(tzinfo=None)
 
 
 def upgrade() -> None:

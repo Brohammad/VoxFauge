@@ -63,6 +63,7 @@ packages = ["src/voxforge"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+pythonpath = ["."]
 markers = [
     "live: tests that require live API keys",
     "postgres: tests requiring PostgreSQL with pgvector",
