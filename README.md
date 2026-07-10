@@ -67,7 +67,7 @@ Pilot value checklist: [docs/product/prove-value-in-1-day.md](docs/product/prove
 ## Development
 
 ```bash
-make test              # full pytest suite
+make test              # pytest (excludes browser; use make test-browser for Playwright)
 make test-cov          # with 70% coverage gate
 ruff check src tests   # lint
 

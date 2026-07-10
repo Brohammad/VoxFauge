@@ -15,11 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `deploy.sh smoke` and `scripts/validate-prod-smoke.sh` for local production validation
 - Content-Security-Policy headers (UI vs API policies)
 - OpenTelemetry FastAPI auto-instrumentation
-- Deployment verification checklist, FAQ, roadmap, known limitations
+- Deployment verification checklist, FAQ, roadmap, known limitations, RC-1 report
+- Gitleaks secret scanning in CI
 
 #### Changed
 - Production compose: app healthchecks; workers wait for healthy app
 - `.env.production.example` uses placeholder domain; `setup-production-env.sh` accepts domain argument
+- CI main pytest job excludes browser tests; smoke script auto-selects free port
 
 #### Removed
 - Dead code: `mcp_adapter.py`, unused `Evaluator`/`ToolHandler` interfaces, empty `stt`/`tts` modules

@@ -45,6 +45,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-python@v5
         with:
@@ -101,7 +108,7 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://voxforge:voxforge@localhost:5432/voxforge
           REDIS_URL: redis://localhost:6379/0
         run: |
-          pytest tests/ -v --tb=short \
+          pytest tests/ -v --tb=short --ignore=tests/browser \
             --cov=voxforge \
             --cov-report=term-missing \
             --cov-report=xml \
