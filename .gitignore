@@ -43,6 +43,7 @@ htmlcov/
 *.mp3
 
 deploy/backups/*.sql.gz
+deploy/.droplet-ip
 deploy/nginx/certs-ready
 deploy/nginx/conf.d/voxforge.conf
 deploy/nginx/conf.d/voxforge-http.conf
