@@ -3,62 +3,262 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VoxForge — Voice AI Infrastructure</title>
+  <meta name="description" content="VoxForge — production-grade voice AI infrastructure. Deploy voice agents with evaluation, replay, knowledge retrieval, and human handoff." />
+  <title>VoxForge — Voice AI Infrastructure Platform</title>
   <link rel="stylesheet" href="/public/landing/styles.css" />
 </head>
 <body>
-  <header class="hero">
-    <nav class="nav">
-      <span class="logo">VoxForge</span>
+  <header class="site-header">
+    <nav class="nav container">
+      <a href="/" class="logo">VoxForge</a>
       <div class="nav-links">
-        <a href="/demo">Live Demo</a>
+        <a href="#product">Product</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#docs">Docs</a>
+        <a href="/demo">Demo</a>
         <a href="/dashboard">Dashboard</a>
-        <a href="/api/v1/docs">API</a>
+        <a href="https://github.com/Brohammad/VoxForge" target="_blank" rel="noopener">GitHub</a>
       </div>
+      <a class="btn primary small" href="/demo">Try live demo</a>
     </nav>
-    <div class="hero-content">
-      <p class="eyebrow">Production-grade Voice AI Infrastructure</p>
-      <h1>Build enterprise voice agents on a real platform — not a chatbot demo.</h1>
-      <p class="subtitle">
-        Modular monolith with voice pipeline orchestration, MCP tool routing, evaluation,
-        replay, observability, and WebRTC transport — designed for operators and builders.
-      </p>
-      <div class="cta-row">
-        <a class="btn primary" href="/demo">Try the demo</a>
-        <a class="btn secondary" href="/api/v1/docs">Explore the API</a>
-      </div>
-      <p class="cta-note">Experience the full pipeline in under one minute — no repository clone required.</p>
-    </div>
   </header>
 
-  <main>
-    <section class="grid">
-      <article>
-        <h2>Single voice pipeline</h2>
-        <p>WebSocket, programmatic onboarding, and LiveKit WebRTC all feed the same <code>VoicePipelineService</code>.</p>
-      </article>
-      <article>
-        <h2>MCP runtime discovery</h2>
-        <p>Tools are discovered at startup with health visibility — not hardcoded in application code.</p>
-      </article>
-      <article>
-        <h2>Evaluation &amp; replay</h2>
-        <p>Every turn is scored, traced, and replayable for regression analysis and operator trust.</p>
-      </article>
-      <article>
-        <h2>Operational maturity</h2>
-        <p>OpenTelemetry, Prometheus metrics, ADRs, CI hardening, and production deployment guides.</p>
-      </article>
-    </section>
+  <section class="hero container">
+    <p class="eyebrow">Open source · Production ready · RC-1</p>
+    <h1>Voice AI infrastructure you can deploy, operate, and trust.</h1>
+    <p class="subtitle">
+      VoxForge is a modular monolith for enterprise voice agents — one pipeline for WebSocket,
+      programmatic onboarding, and LiveKit WebRTC, with evaluation, replay, knowledge retrieval,
+      MCP tools, and human handoff built in.
+    </p>
+    <div class="cta-row">
+      <a class="btn primary" href="/demo">Run interactive demo</a>
+      <a class="btn secondary" href="/api/v1/docs">API reference</a>
+      <a class="btn secondary" href="https://github.com/Brohammad/VoxForge" target="_blank" rel="noopener">View on GitHub</a>
+    </div>
+    <p class="cta-note">Live at <strong>voxforge.brohammad.tech</strong> — mock providers, no API keys required.</p>
+    <div class="hero-shot">
+      <img src="/public/assets/screenshots/demo-results.png" alt="Demo call completed in 36ms with transcript and session ID" loading="lazy" />
+    </div>
+  </section>
 
-    <section class="stack">
-      <h2>Architecture at a glance</h2>
-      <pre>Client → Transport (WS / LiveKit) → Voice Pipeline → Agent Orchestrator → MCP → Evaluation → Replay</pre>
-    </section>
-  </main>
+  <section id="product" class="section container">
+    <h2>Product overview</h2>
+    <p class="section-lead">Everything a pilot customer or engineering team needs to go from clone to production voice agent.</p>
+    <div class="grid four">
+      <article>
+        <h3>Voice pipeline</h3>
+        <p>STT → agent orchestrator → TTS with per-turn evaluation, tracing, and outcome decisions.</p>
+      </article>
+      <article>
+        <h3>Knowledge base</h3>
+        <p>Upload documents, chunk, embed, and ground agent responses with citations.</p>
+      </article>
+      <article>
+        <h3>Human handoff</h3>
+        <p>Escalation queue, signed replay links, and ticketing integration hooks.</p>
+      </article>
+      <article>
+        <h3>Operator dashboard</h3>
+        <p>Sessions, latency, evaluations, alerts, policy presets, and SAML SSO.</p>
+      </article>
+    </div>
+  </section>
 
-  <footer>
-  <p>VoxForge — Voice AI Infrastructure Platform · <a href="/demo">Demo</a> · <a href="/dashboard">Dashboard</a></p>
+  <section class="section alt">
+    <div class="container split">
+      <div>
+        <h2>See it in action</h2>
+        <p>One click runs the same <code>VoicePipelineService</code> path used in production onboarding.</p>
+        <ul class="checklist">
+          <li>36ms end-to-end with mock providers</li>
+          <li>Session ID + evaluation score returned</li>
+          <li>Replay and dashboard drill-down</li>
+        </ul>
+        <a class="btn primary" href="/demo">Open demo →</a>
+      </div>
+      <figure>
+        <img src="/public/assets/screenshots/landing-hero.png" alt="VoxForge landing page" loading="lazy" />
+      </figure>
+    </div>
+  </section>
+
+  <section id="architecture" class="section container">
+    <h2>Architecture</h2>
+    <p class="section-lead">Clean Architecture modular monolith — one codebase, clear boundaries, Docker-native deployment.</p>
+    <div class="arch-diagram" role="img" aria-label="VoxForge architecture diagram">
+      <div class="arch-row">
+        <span class="arch-box client">Client</span>
+        <span class="arch-arrow">→</span>
+        <span class="arch-box">Transport<br><small>WS · LiveKit</small></span>
+        <span class="arch-arrow">→</span>
+        <span class="arch-box accent">Voice Pipeline</span>
+        <span class="arch-arrow">→</span>
+        <span class="arch-box">Agent Orchestrator</span>
+      </div>
+      <div class="arch-row sub">
+        <span class="arch-box">MCP Tools</span>
+        <span class="arch-box">Knowledge RAG</span>
+        <span class="arch-box">Memory</span>
+        <span class="arch-box">Evaluation</span>
+        <span class="arch-box">Handoff</span>
+        <span class="arch-box">Replay</span>
+      </div>
+    </div>
+    <div class="grid three">
+      <article>
+        <h3>Deployment</h3>
+        <p>Docker Compose + NGINX + Certbot on Ubuntu 24.04. Health, readiness, backups, optional Prometheus/Grafana.</p>
+        <a href="https://github.com/Brohammad/VoxForge/blob/main/docs/deployment/guide.md">Deployment guide →</a>
+      </article>
+      <article>
+        <h3>Observability</h3>
+        <p>OpenTelemetry traces, Prometheus metrics, structured logs, and dashboard analytics.</p>
+        <a href="https://github.com/Brohammad/VoxForge/blob/main/docs/architecture/observability.md">Observability docs →</a>
+      </article>
+      <article>
+        <h3>Security</h3>
+        <p>JWT + RBAC, API keys, SAML SSO, CSP/HSTS headers, rate limits, secret scanning in CI.</p>
+        <a href="https://github.com/Brohammad/VoxForge/blob/main/SECURITY.md">Security policy →</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="section alt">
+    <div class="container">
+      <h2>Feature highlights</h2>
+      <div class="feature-matrix">
+        <div class="fm-row fm-head"><span>Capability</span><span>Status</span></div>
+        <div class="fm-row"><span>WebSocket voice gateway</span><span class="badge ok">GA</span></div>
+        <div class="fm-row"><span>Programmatic onboarding</span><span class="badge ok">GA</span></div>
+        <div class="fm-row"><span>LiveKit WebRTC</span><span class="badge beta">Optional</span></div>
+        <div class="fm-row"><span>Knowledge base + RAG</span><span class="badge ok">GA</span></div>
+        <div class="fm-row"><span>MCP tool router</span><span class="badge ok">GA</span></div>
+        <div class="fm-row"><span>Human handoff + replay</span><span class="badge ok">GA</span></div>
+        <div class="fm-row"><span>SAML SSO</span><span class="badge ok">GA</span></div>
+        <div class="fm-row"><span>Prometheus / Grafana</span><span class="badge beta">Profile</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section container">
+    <h2>Operator dashboard</h2>
+    <p class="section-lead">Monitor sessions, upload knowledge, manage handoffs, and tune agent policies.</p>
+    <figure class="wide-shot">
+      <img src="/public/assets/screenshots/dashboard-overview.png" alt="VoxForge operator dashboard overview" loading="lazy" />
+    </figure>
+    <p class="cta-note">Demo credentials: <code>demo@voxforge.io</code> / <code>VoxForgeDemo!</code> (register your own account for full access)</p>
+  </section>
+
+  <section id="docs" class="section alt">
+    <div class="container grid three">
+      <article>
+        <h3>Quick start</h3>
+        <pre class="code-block">git clone …/VoxForge.git
+uv sync
+docker compose up -d
+alembic upgrade head
+uvicorn voxforge.main:app --app-dir src</pre>
+        <a href="https://github.com/Brohammad/VoxForge#quick-start">Full quick start →</a>
+      </article>
+      <article>
+        <h3>Documentation</h3>
+        <ul class="link-list">
+          <li><a href="https://github.com/Brohammad/VoxForge/blob/main/docs/deployment/guide.md">Deployment guide</a></li>
+          <li><a href="https://github.com/Brohammad/VoxForge/blob/main/docs/FAQ.md">FAQ</a></li>
+          <li><a href="https://github.com/Brohammad/VoxForge/blob/main/docs/ROADMAP.md">Roadmap</a></li>
+          <li><a href="https://github.com/Brohammad/VoxForge/blob/main/CHANGELOG.md">Changelog</a></li>
+        </ul>
+      </article>
+      <article>
+        <h3>API reference</h3>
+        <p>OpenAPI 3 spec with interactive explorer for every endpoint.</p>
+        <a class="btn secondary" href="/api/v1/docs">Open API docs →</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="section container">
+    <h2>Pricing</h2>
+    <p class="section-lead">VoxForge is open source (MIT). You pay for your own infrastructure and voice provider API usage.</p>
+    <div class="grid three pricing">
+      <article>
+        <h3>Community</h3>
+        <p class="price">$0</p>
+        <p>Self-hosted, full source, mock or BYO providers.</p>
+      </article>
+      <article class="highlight">
+        <h3>Design partner</h3>
+        <p class="price">Pilot</p>
+        <p>Guided deployment, feedback loop, co-developed roadmap.</p>
+        <a href="#contact">Contact us →</a>
+      </article>
+      <article>
+        <h3>Enterprise</h3>
+        <p class="price">Custom</p>
+        <p>SSO, SLA, dedicated support — contact for evaluation.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section alt">
+    <div class="container grid two">
+      <article>
+        <h2>FAQ</h2>
+        <details><summary>Do I need API keys to try the demo?</summary><p>No. Public demo uses mock STT/LLM/TTS providers.</p></details>
+        <details><summary>Can I deploy to my own VPS?</summary><p>Yes. Ubuntu 24.04 + Docker. See the deployment guide.</p></details>
+        <details><summary>Is this production-ready?</summary><p>RC-1 is live at voxforge.brohammad.tech with HTTPS, health checks, and automated tests.</p></details>
+        <a href="https://github.com/Brohammad/VoxForge/blob/main/docs/FAQ.md">Full FAQ →</a>
+      </article>
+      <article>
+        <h2>Roadmap</h2>
+        <ul class="link-list">
+          <li><strong>v1.0</strong> — Public launch, pilot onboarding</li>
+          <li><strong>v1.1</strong> — httpOnly session cookies, enhanced voice UX</li>
+          <li><strong>v2.0</strong> — Multi-region, advanced analytics</li>
+        </ul>
+        <a href="https://github.com/Brohammad/VoxForge/blob/main/docs/ROADMAP.md">Full roadmap →</a>
+      </article>
+    </div>
+  </section>
+
+  <section id="contact" class="section container">
+    <h2>Contact</h2>
+    <p class="section-lead">Interested in a design partner pilot or technical evaluation?</p>
+    <div class="contact-row">
+      <a class="btn primary" href="https://github.com/Brohammad/VoxForge/issues/new?template=feature_request.md">Request a pilot</a>
+      <a class="btn secondary" href="https://github.com/Brohammad/VoxForge/security/policy">Report a security issue</a>
+      <a class="btn secondary" href="https://github.com/Brohammad/VoxForge/discussions">GitHub Discussions</a>
+    </div>
+  </section>
+
+  <section class="section alt blog-placeholder">
+    <div class="container">
+      <h2>Blog</h2>
+      <p>Engineering posts on voice pipeline design, deployment hardening, and evaluation — coming soon.</p>
+      <p class="muted">Subscribe via <a href="https://github.com/Brohammad/VoxForge">GitHub Releases</a> for launch updates.</p>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <strong>VoxForge</strong>
+        <p>Voice AI Infrastructure Platform · MIT License</p>
+      </div>
+      <div>
+        <a href="/demo">Demo</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/api/v1/docs">API</a>
+        <a href="https://github.com/Brohammad/VoxForge">GitHub</a>
+      </div>
+      <div>
+        <a href="https://github.com/Brohammad/VoxForge/blob/main/SECURITY.md">Security</a>
+        <a href="https://github.com/Brohammad/VoxForge/blob/main/CODE_OF_CONDUCT.md">Code of Conduct</a>
+        <a href="https://github.com/Brohammad/VoxForge/blob/main/CONTRIBUTING.md">Contributing</a>
+      </div>
+    </div>
+    <p class="copyright">© 2026 VoxForge · <a href="https://voxforge.brohammad.tech">voxforge.brohammad.tech</a></p>
   </footer>
 </body>
 </html>
