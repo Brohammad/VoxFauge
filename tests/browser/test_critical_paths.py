@@ -20,8 +20,8 @@ def _post_json(page: Page, url: str, payload: dict, headers: dict | None = None)
 def test_landing_page_navigation(page: Page, base_url: str) -> None:
     page.goto(f"{base_url}/")
     expect(page).to_have_title(re.compile("VoxForge"))
-    expect(page.get_by_role("link", name="Live Demo")).to_be_visible()
-    page.get_by_role("link", name="Try the demo").click()
+    expect(page.get_by_role("link", name="Try live demo")).to_be_visible()
+    page.get_by_role("link", name="Run interactive demo").click()
     expect(page).to_have_url(re.compile(r"/demo$"))
 
 
