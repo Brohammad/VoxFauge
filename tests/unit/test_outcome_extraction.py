@@ -11,7 +11,7 @@ class _RepoStub:
 
     async def upsert_session_outcome(self, **kwargs):
         self.calls.append(kwargs)
-        return kwargs
+        return None, True
 
 
 @pytest.mark.asyncio
