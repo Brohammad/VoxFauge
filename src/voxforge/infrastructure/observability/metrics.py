@@ -158,3 +158,35 @@ knowledge_chunks_indexed_total = Counter(
     "voxforge_knowledge_chunks_indexed_total",
     "Knowledge chunks indexed",
 )
+handoff_initiated_total = Counter(
+    "voxforge_handoff_initiated_total",
+    "Handoffs started by trigger type",
+    ["trigger", "org_id"],
+)
+handoff_completed_total = Counter(
+    "voxforge_handoff_completed_total",
+    "Handoffs completed or cancelled",
+    ["status"],
+)
+handoff_duration_seconds = Histogram(
+    "voxforge_handoff_duration_seconds",
+    "Handoff orchestration duration by stage",
+    ["stage"],
+    buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0),
+)
+handoff_queue_depth = Gauge(
+    "voxforge_handoff_queue_depth",
+    "Pending unassigned handoffs",
+    ["org_id"],
+)
+handoff_confidence_at_escalation = Histogram(
+    "voxforge_handoff_confidence_at_escalation",
+    "Confidence score when handoff triggered",
+    ["trigger"],
+    buckets=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
+)
+handoff_resume_total = Counter(
+    "voxforge_handoff_resume_total",
+    "Session resume attempts after handoff",
+    ["status"],
+)

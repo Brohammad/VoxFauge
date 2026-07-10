@@ -164,6 +164,10 @@ class VoiceSessionModel(Base):
     )
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     total_latency_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
+    handoff_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("handoff_records.id", ondelete="SET NULL"), nullable=True
+    )
+    handoff_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     messages: Mapped[list["MessageModel"]] = relationship(back_populates="session", lazy="selectin")
     metrics: Mapped[list["SessionMetricModel"]] = relationship(
@@ -221,6 +225,9 @@ class ToolCallModel(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     latency_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    handoff_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("handoff_records.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
@@ -376,6 +383,9 @@ class OutcomeKPIModel(Base):
     task_success: Mapped[bool] = mapped_column(nullable=False, default=False)
     escalation: Mapped[bool] = mapped_column(nullable=False, default=False)
     resolution_time_seconds: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    handoff_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("handoff_records.id", ondelete="SET NULL"), nullable=True
+    )
     recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
@@ -522,6 +532,76 @@ class KnowledgeIngestJobModel(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+
+
+class HandoffRecordModel(Base):
+    __tablename__ = "handoff_records"
+    __table_args__ = (UniqueConstraint("session_id", name="uq_handoff_records_session"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("voice_sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    ticket_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    ticket_provider: Mapped[str] = mapped_column(String(32), nullable=False, default="mock")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    trigger: Mapped[str] = mapped_column(String(64), nullable=False)
+    trigger_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    conversation_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    replay_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    replay_token: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    assigned_to_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    assigned_to_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
+class HandoffEventModel(Base):
+    __tablename__ = "handoff_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    handoff_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("handoff_records.id", ondelete="CASCADE"), nullable=False
+    )
+    org_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+
+
+class ConversationSnapshotModel(Base):
+    __tablename__ = "conversation_snapshots"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    handoff_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("handoff_records.id", ondelete="CASCADE"), nullable=False
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    org_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    message_count: Mapped[int] = mapped_column(nullable=False)
+    snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )

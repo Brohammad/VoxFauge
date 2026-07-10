@@ -4,12 +4,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from voxforge.api.dependencies import get_session_manager, require_scope
+from voxforge.api.dependencies import get_handoff_orchestrator, get_session_manager, require_scope
 from voxforge.config import get_settings
 from voxforge.core.domain.auth import Principal
 from voxforge.core.domain.entities import SessionStatus, TransportType, VoiceSession
 from voxforge.core.exceptions import SessionNotFoundError
 from voxforge.infrastructure.db.session import get_db_session
+from voxforge.core.domain.handoff import HandoffTrigger
+from voxforge.modules.handoff.application.orchestrator import HandoffOrchestrator
+from voxforge.modules.handoff.application.policy_loader import load_escalation_policy
 from voxforge.modules.session_manager.application.service import SessionManager
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -108,6 +111,46 @@ async def get_session(
     except SessionNotFoundError:
         raise HTTPException(status_code=404, detail="Session not found") from None
     return SessionResponse.from_entity(session)
+
+
+class SessionHandoffRequest(BaseModel):
+    trigger: HandoffTrigger = HandoffTrigger.USER_REQUEST
+    reason: str = ""
+    priority: str = "normal"
+    customer_email: str | None = None
+
+
+@router.post("/{session_id}/handoff", status_code=201)
+async def initiate_session_handoff(
+    session_id: UUID,
+    body: SessionHandoffRequest,
+    principal: Principal = Depends(require_scope("sessions:write")),
+    session_manager: SessionManager = Depends(get_session_manager),
+    orchestrator: HandoffOrchestrator = Depends(get_handoff_orchestrator),
+    db: AsyncSession = Depends(get_db_session),
+):
+    from voxforge.api.v1.handoffs import _to_response
+    from voxforge.infrastructure.db.handoff_repository import HandoffRepository
+
+    try:
+        await session_manager.get_session(session_id, org_id=principal.org_id)
+        config = await session_manager.get_session_config(session_id)
+        policy = load_escalation_policy(config, get_settings())
+        package = await orchestrator.initiate_handoff(
+            org_id=principal.org_id,
+            session_id=session_id,
+            trigger=body.trigger,
+            reason=body.reason or f"Handoff triggered via API ({body.trigger.value})",
+            policy=policy,
+            customer_email=body.customer_email,
+            priority=body.priority,
+        )
+        await session_manager.commit()
+        await db.commit()
+        record = await HandoffRepository(db).get_handoff(package.handoff_id, org_id=principal.org_id)
+        return _to_response(record)
+    except SessionNotFoundError:
+        raise HTTPException(status_code=404, detail="Session not found") from None
 
 
 @router.get("/{session_id}/messages", response_model=MessagesListResponse)

@@ -36,3 +36,6 @@ class TicketCreateRequest(BaseModel):
     description: str
     customer_email: str | None = None
     priority: str = "normal"
+    session_id: str | None = None
+    conversation_summary: str | None = None
+    replay_url: str | None = None

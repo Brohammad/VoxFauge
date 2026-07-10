@@ -11,6 +11,8 @@ class SessionStatus(StrEnum):
     INTERRUPTED = "interrupted"
     COMPLETED = "completed"
     FAILED = "failed"
+    HANDOFF_PENDING = "handoff_pending"
+    HANDOFF_ACTIVE = "handoff_active"
 
 
 class SessionPhase(StrEnum):
@@ -18,6 +20,8 @@ class SessionPhase(StrEnum):
     LISTENING = "listening"
     PROCESSING = "processing"
     SPEAKING = "speaking"
+    HANDOFF_PENDING = "handoff_pending"
+    HANDOFF_ACTIVE = "handoff_active"
 
 
 class MessageRole(StrEnum):

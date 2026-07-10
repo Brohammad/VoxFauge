@@ -25,6 +25,8 @@ from voxforge.modules.session_manager.application.service import SessionManager
 
 if TYPE_CHECKING:
     from voxforge.modules.evaluation.application.service import EvaluationEngine
+    from voxforge.modules.handoff.application.orchestrator import HandoffOrchestrator
+    from voxforge.modules.handoff.application.policy import HandoffPolicyEngine
     from voxforge.modules.memory.application.service import MemoryService
     from voxforge.modules.outcomes.application.service import OutcomeExtractionService
 
@@ -53,6 +55,8 @@ class VoicePipelineService:
         memory_service: "MemoryService | None" = None,
         evaluation_engine: "EvaluationEngine | None" = None,
         outcome_service: "OutcomeExtractionService | None" = None,
+        handoff_orchestrator: "HandoffOrchestrator | None" = None,
+        handoff_policy: "HandoffPolicyEngine | None" = None,
     ) -> None:
         self._sessions = session_manager
         self._stt = stt_provider
@@ -62,6 +66,8 @@ class VoicePipelineService:
         self._memory = memory_service
         self._evaluation = evaluation_engine
         self._outcomes = outcome_service
+        self._handoff = handoff_orchestrator
+        self._handoff_policy = handoff_policy
         self._session_orgs: dict[UUID, UUID] = {}
         self._interrupt_event: asyncio.Event | None = None
         self._pipeline_task: asyncio.Task | None = None
@@ -280,6 +286,7 @@ class VoicePipelineService:
             assistant_metadata = {}
 
         await self._sessions.save_turn_metrics(session_id, metrics)
+        evaluation_run = None
         if self._evaluation:
             from voxforge.core.domain.evaluation import TurnEvaluationInput
 
@@ -299,7 +306,7 @@ class VoicePipelineService:
                 if memory_ctx.summary:
                     context_snippets.append(memory_ctx.summary)
                 context_snippets.extend(e.content for e in memory_ctx.relevant_entries)
-            await self._evaluation.evaluate_turn(
+            evaluation_run = await self._evaluation.evaluate_turn(
                 TurnEvaluationInput(
                     session_id=session_id,
                     org_id=org_id,
@@ -314,6 +321,56 @@ class VoicePipelineService:
                     context_snippets=context_snippets,
                 )
             )
+
+        if (
+            self._handoff
+            and self._handoff_policy
+            and org_id is not None
+            and self._settings.handoff_enabled
+        ):
+            from voxforge.infrastructure.observability.metrics import (
+                handoff_confidence_at_escalation,
+            )
+            from voxforge.modules.handoff.application.context import build_turn_handoff_context
+            from voxforge.modules.handoff.application.policy_loader import load_escalation_policy
+
+            trace = self._response_generator.get_last_agent_trace(session_id)
+            config = await self._sessions.get_session_config(session_id)
+            policy = load_escalation_policy(config, self._settings)
+            tool_failures = sum(
+                1
+                for step in (trace or [])
+                if step.get("agent") == "tool"
+                and str(step.get("status", "")).lower() in ("error", "timeout", "failed")
+            )
+            consecutive = await self._sessions.track_tool_failures(session_id, tool_failures)
+            handoff_ctx = build_turn_handoff_context(
+                user_transcript=transcript,
+                assistant_response=assistant_text,
+                interrupted=was_interrupted,
+                confidence=confidence,
+                agent_trace=trace,
+                evaluation_run=evaluation_run,
+                consecutive_tool_failures=consecutive,
+            )
+            decision = self._handoff_policy.evaluate(handoff_ctx, policy)
+            if decision.should_escalate and decision.trigger is not None:
+                if decision.confidence is not None:
+                    handoff_confidence_at_escalation.labels(
+                        trigger=decision.trigger.value
+                    ).observe(decision.confidence)
+                package = await self._handoff.initiate_handoff(
+                    org_id=org_id,
+                    session_id=session_id,
+                    trigger=decision.trigger,
+                    reason=decision.reason,
+                    confidence_score=decision.confidence,
+                    policy=policy,
+                )
+                assistant_metadata["escalation"] = True
+                assistant_metadata["handoff_id"] = str(package.handoff_id)
+                assistant_metadata["ticket_id"] = package.ticket_id
+
         if self._outcomes:
             await self._outcomes.record_outcome(
                 org_id=org_id,

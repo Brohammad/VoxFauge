@@ -6,7 +6,9 @@ from voxforge.infrastructure.providers.support.factory import (
     create_ticketing_provider,
 )
 from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
+from voxforge.infrastructure.tools.handoff_tools import HandoffToHumanTool
 from voxforge.infrastructure.tools.support_tools import build_support_tools
+from voxforge.modules.handoff.application.orchestrator import HandoffOrchestrator
 from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
 
 
@@ -16,6 +18,15 @@ def build_support_tool_handlers(settings: Settings) -> list[object]:
     knowledge_base = create_knowledge_base_provider(settings)
     ticketing = create_ticketing_provider(settings)
     return build_support_tools(knowledge_base, ticketing)
+
+
+def build_handoff_tool_handlers(
+    settings: Settings,
+    orchestrator: HandoffOrchestrator | None,
+) -> list[object]:
+    if not settings.handoff_enabled or orchestrator is None:
+        return []
+    return [HandoffToHumanTool(orchestrator)]
 
 
 def register_support_tool_discovery(
@@ -31,8 +42,12 @@ def register_support_tool_discovery(
 def create_tool_registry(
     settings: Settings,
     mcp_registry: MCPRuntimeRegistry | None = None,
+    handoff_orchestrator: HandoffOrchestrator | None = None,
 ) -> ToolRegistry:
+    extra = build_support_tool_handlers(settings) + build_handoff_tool_handlers(
+        settings, handoff_orchestrator
+    )
     return ToolRegistry(
         mcp_registry=mcp_registry,
-        extra_tools=build_support_tool_handlers(settings),
+        extra_tools=extra,
     )

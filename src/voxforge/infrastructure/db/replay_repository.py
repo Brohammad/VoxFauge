@@ -13,6 +13,7 @@ from voxforge.core.domain.replay import (
 from voxforge.core.exceptions import SessionNotFoundError
 from voxforge.infrastructure.db.models import (
     EvaluationRunModel,
+    HandoffEventModel,
     MessageModel,
     OutcomeKPIModel,
     SessionMetricModel,
@@ -72,6 +73,16 @@ class ReplayRepository:
                 select(OutcomeKPIModel).where(OutcomeKPIModel.session_id == session_id).limit(1)
             )
         ).scalar_one_or_none()
+
+        handoff_event_rows: list[HandoffEventModel] = []
+        if getattr(session_model, "handoff_id", None) is not None:
+            handoff_event_rows = (
+                await self._session.execute(
+                    select(HandoffEventModel)
+                    .where(HandoffEventModel.handoff_id == session_model.handoff_id)
+                    .order_by(HandoffEventModel.created_at.asc())
+                )
+            ).scalars().all()
 
         events: list[SessionReplayEvent] = []
 
@@ -146,6 +157,17 @@ class ReplayRepository:
                         "metric_name": metric.metric_name,
                         "value_ms": metric.value_ms,
                     },
+                )
+            )
+
+        for handoff_event in handoff_event_rows:
+            events.append(
+                SessionReplayEvent(
+                    event_type="handoff",
+                    timestamp=handoff_event.created_at,
+                    summary=f"handoff:{handoff_event.event_type}",
+                    status=handoff_event.event_type,
+                    payload=handoff_event.payload or {},
                 )
             )
 

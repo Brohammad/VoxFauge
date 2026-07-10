@@ -119,6 +119,18 @@ class Settings(BaseSettings):
     evaluation_judge_model: str = "gpt-4.1-mini"
     evaluation_min_hallucination_score: float = 0.7
 
+    handoff_enabled: bool = True
+    handoff_auto_policy: bool = True
+    handoff_min_confidence: float = 0.55
+    handoff_max_tool_failures: int = 2
+    handoff_escalate_on_tool_failure: bool = True
+    handoff_session_ttl_seconds: int = 14400
+    handoff_accept_sla_seconds: int = 300
+    handoff_queue_max: int = 10
+    handoff_assignment_provider: str = "mock"  # mock | round_robin
+    handoff_replay_token_ttl_seconds: int = 604800
+    handoff_replay_signing_secret: str = ""
+
     @property
     def rate_limit_path_prefixes(self) -> tuple[str, ...]:
         return tuple(p.strip() for p in self.rate_limit_paths.split(",") if p.strip())

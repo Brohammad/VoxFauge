@@ -19,10 +19,11 @@ class RedisSessionStateStore:
     def _heartbeat_key(self, session_id: UUID) -> str:
         return f"session:{session_id}:heartbeat"
 
-    async def save_state(self, state: SessionState) -> None:
+    async def save_state(self, state: SessionState, *, ttl_seconds: int | None = None) -> None:
         key = self._state_key(state.session_id)
         data = state.model_dump(mode="json")
-        await self._redis.set(key, json.dumps(data), ex=self._ttl)
+        ttl = ttl_seconds if ttl_seconds is not None else self._ttl
+        await self._redis.set(key, json.dumps(data), ex=ttl)
 
     async def get_state(self, session_id: UUID) -> SessionState:
         key = self._state_key(session_id)

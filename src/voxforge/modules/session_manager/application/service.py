@@ -149,3 +149,54 @@ class SessionManager:
 
     async def commit(self) -> None:
         await self._db_session.commit()
+
+    async def apply_handoff_pending(
+        self,
+        session_id: UUID,
+        *,
+        handoff_id: UUID,
+        handoff_context: dict,
+    ) -> None:
+        from voxforge.core.domain.entities import SessionPhase, SessionStatus
+
+        await self._repo.update_status(session_id, SessionStatus.HANDOFF_PENDING)
+        state = await self._state_store.get_state(session_id)
+        state.phase = SessionPhase.HANDOFF_PENDING
+        state.config = {
+            **state.config,
+            "handoff": handoff_context,
+            "consecutive_tool_failures": state.config.get("consecutive_tool_failures", 0),
+        }
+        await self._state_store.save_state(state, ttl_seconds=self._settings.handoff_session_ttl_seconds)
+
+    async def apply_handoff_active(self, session_id: UUID, *, handoff_id: UUID) -> None:
+        from voxforge.core.domain.entities import SessionPhase, SessionStatus
+
+        await self._repo.update_status(session_id, SessionStatus.HANDOFF_ACTIVE)
+        state = await self._state_store.get_state(session_id)
+        state.phase = SessionPhase.HANDOFF_ACTIVE
+        handoff_cfg = state.config.get("handoff", {})
+        if isinstance(handoff_cfg, dict):
+            handoff_cfg["handoff_id"] = str(handoff_id)
+            state.config["handoff"] = handoff_cfg
+        await self._state_store.save_state(state, ttl_seconds=self._settings.handoff_session_ttl_seconds)
+
+    async def clear_handoff(self, session_id: UUID) -> None:
+        from voxforge.core.domain.entities import SessionPhase, SessionStatus
+
+        await self._repo.update_status(session_id, SessionStatus.ACTIVE)
+        state = await self._state_store.get_state(session_id)
+        state.phase = SessionPhase.LISTENING
+        state.config.pop("handoff", None)
+        await self._state_store.save_state(state)
+
+    async def track_tool_failures(self, session_id: UUID, failed_count: int) -> int:
+        state = await self._state_store.get_state(session_id)
+        current = int(state.config.get("consecutive_tool_failures", 0))
+        if failed_count > 0:
+            current += failed_count
+        else:
+            current = 0
+        state.config["consecutive_tool_failures"] = current
+        await self._state_store.save_state(state)
+        return current

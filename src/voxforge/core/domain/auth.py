@@ -52,6 +52,9 @@ ROLE_SCOPES: dict[OrgRole, list[str]] = {
         "knowledge:read",
         "knowledge:write",
         "knowledge:delete",
+        "handoffs:read",
+        "handoffs:write",
+        "handoffs:assign",
     ],
     OrgRole.ADMIN: [
         "sessions:read",
@@ -66,12 +69,17 @@ ROLE_SCOPES: dict[OrgRole, list[str]] = {
         "knowledge:read",
         "knowledge:write",
         "knowledge:delete",
+        "handoffs:read",
+        "handoffs:write",
+        "handoffs:assign",
     ],
     OrgRole.MEMBER: [
         "sessions:read",
         "sessions:write",
         "ws:connect",
         "knowledge:read",
+        "handoffs:read",
+        "handoffs:write",
     ],
 }
 

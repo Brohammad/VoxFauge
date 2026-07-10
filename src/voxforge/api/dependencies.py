@@ -9,7 +9,7 @@ from voxforge.core.domain.auth import Principal
 from voxforge.core.events.bus import EventBus, get_event_bus
 from voxforge.core.exceptions import ForbiddenError, UnauthorizedError
 from voxforge.infrastructure.db.dashboard_repository import DashboardRepository
-from voxforge.infrastructure.db.evaluation_repository import EvaluationRepository
+from voxforge.infrastructure.db.handoff_repository import HandoffRepository
 from voxforge.infrastructure.db.knowledge_repository import KnowledgeRepository
 from voxforge.infrastructure.db.memory_repository import MemoryRepository
 from voxforge.infrastructure.db.outcome_repository import OutcomeRepository
@@ -17,6 +17,10 @@ from voxforge.infrastructure.db.replay_repository import ReplayRepository
 from voxforge.infrastructure.db.session import get_db_session
 from voxforge.infrastructure.db.tool_repository import ToolCallRepository
 from voxforge.infrastructure.livekit.token_service import LiveKitTokenService
+from voxforge.infrastructure.providers.support.factory import (
+    create_knowledge_base_provider,
+    create_ticketing_provider,
+)
 from voxforge.infrastructure.providers.embeddings.factory import create_embedding_provider
 from voxforge.infrastructure.providers.embeddings.openai import OpenAIEmbeddingProvider
 from voxforge.infrastructure.providers.factory import (
@@ -42,7 +46,10 @@ from voxforge.modules.memory.application.service import MemoryService
 from voxforge.infrastructure.knowledge.blob import create_blob_store
 from voxforge.modules.knowledge.application.ingestion_service import KnowledgeIngestionService
 from voxforge.modules.knowledge.application.search_service import KnowledgeSearchService
-from voxforge.modules.onboarding.application.service import OnboardingService
+from voxforge.modules.handoff.application.orchestrator import HandoffOrchestrator
+from voxforge.modules.handoff.application.policy import HandoffPolicyEngine
+from voxforge.modules.handoff.application.replay_link import ReplayLinkService
+from voxforge.modules.handoff.application.summarizer import ExtractiveConversationSummarizer
 from voxforge.modules.outcomes.application.service import OutcomeExtractionService
 from voxforge.modules.replay.application.service import ReplayService
 from voxforge.modules.session_manager.application.service import SessionManager
@@ -192,14 +199,44 @@ def get_mcp_registry(request: Request) -> MCPRuntimeRegistry | None:
     return getattr(request.app.state, "mcp_registry", None)
 
 
+def get_handoff_orchestrator(
+    db: AsyncSession = Depends(get_db_session),
+    session_manager: SessionManager = Depends(get_session_manager),
+    settings: Settings = Depends(get_settings),
+) -> HandoffOrchestrator | None:
+    if not settings.handoff_enabled:
+        return None
+    return HandoffOrchestrator(
+        HandoffRepository(db),
+        create_ticketing_provider(settings),
+        ExtractiveConversationSummarizer(session_manager),
+        ReplayLinkService(settings),
+        session_manager,
+        settings,
+    )
+
+
+def get_handoff_policy_engine(
+    settings: Settings = Depends(get_settings),
+) -> HandoffPolicyEngine | None:
+    if not settings.handoff_enabled or not settings.handoff_auto_policy:
+        return None
+    return HandoffPolicyEngine()
+
+
 def get_tool_router(
     db: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
     mcp_registry: MCPRuntimeRegistry | None = Depends(get_mcp_registry),
+    handoff_orchestrator: HandoffOrchestrator | None = Depends(get_handoff_orchestrator),
 ) -> ToolRouter | None:
     if not settings.tools_enabled:
         return None
-    registry = create_tool_registry(settings, mcp_registry=mcp_registry)
+    registry = create_tool_registry(
+        settings,
+        mcp_registry=mcp_registry,
+        handoff_orchestrator=handoff_orchestrator,
+    )
     repo = ToolCallRepository(db)
     return ToolRouter(registry, settings, repo)
 
@@ -268,6 +305,8 @@ def get_pipeline(
     memory_service: MemoryService | None = Depends(get_memory_service),
     evaluation_engine: EvaluationEngine | None = Depends(get_evaluation_engine),
     outcome_service: OutcomeExtractionService = Depends(get_outcome_service),
+    handoff_orchestrator: HandoffOrchestrator | None = Depends(get_handoff_orchestrator),
+    handoff_policy: HandoffPolicyEngine | None = Depends(get_handoff_policy_engine),
 ) -> VoicePipelineService:
     return VoicePipelineService(
         session_manager,
@@ -278,6 +317,8 @@ def get_pipeline(
         memory_service,
         evaluation_engine,
         outcome_service,
+        handoff_orchestrator=handoff_orchestrator,
+        handoff_policy=handoff_policy,
     )
 
 
