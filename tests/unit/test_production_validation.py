@@ -7,8 +7,10 @@ from voxforge.infrastructure.security.production import collect_production_error
 def test_production_validation_passes_with_strong_secrets():
     settings = Settings(
         app_env="production",
+        auth_required=True,
         jwt_secret_key="a" * 32,
         api_key_hash_pepper="b" * 32,
+        handoff_replay_signing_secret="c" * 32,
         trusted_hosts="demo.example.com",
         stt_provider="mock",
         llm_provider="mock",

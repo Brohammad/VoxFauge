@@ -48,7 +48,17 @@ class ToolRouter:
         *,
         org_id: UUID | None = None,
         session_id: UUID | None = None,
+        caller_scopes: list[str] | None = None,
     ) -> ToolResult:
+        scope_error = self._check_required_scopes(tool_name, caller_scopes)
+        if scope_error is not None:
+            return ToolResult(
+                tool_name=tool_name,
+                output="",
+                status=ToolCallStatus.ERROR,
+                error=scope_error,
+            )
+
         start = time.monotonic()
         status = ToolCallStatus.SUCCESS
         output = ""
@@ -121,3 +131,14 @@ class ToolRouter:
             )
 
         return final
+
+    def _check_required_scopes(self, tool_name: str, caller_scopes: list[str] | None) -> str | None:
+        definitions = {item.name: item for item in self._registry.list_definitions()}
+        definition = definitions.get(tool_name)
+        if definition is None or not definition.required_scopes:
+            return None
+        allowed = set(caller_scopes or [])
+        missing = [scope for scope in definition.required_scopes if scope not in allowed]
+        if missing:
+            return f"Missing required scope(s) for tool '{tool_name}': {', '.join(missing)}"
+        return None

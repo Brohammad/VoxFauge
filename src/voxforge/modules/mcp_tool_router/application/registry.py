@@ -34,6 +34,7 @@ class ToolRegistry:
                 description=handler.description,
                 parameters=handler.parameters,
                 source="builtin",
+                required_scopes=list(getattr(handler, "required_scopes", []) or []),
             )
             for handler in self._handlers.values()
         ]

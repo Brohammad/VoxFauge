@@ -33,6 +33,7 @@ def _safe_eval_math(expression: str) -> float:
 class BuiltinGetTimeTool:
     name = "get_current_time"
     description = "Get the current UTC date and time."
+    required_scopes: list[str] = []
     parameters = {
         "type": "object",
         "properties": {},
@@ -46,6 +47,7 @@ class BuiltinGetTimeTool:
 class BuiltinCalculatorTool:
     name = "calculate"
     description = "Evaluate a basic math expression (numbers, +, -, *, /, parentheses)."
+    required_scopes: list[str] = []
     parameters = {
         "type": "object",
         "properties": {
@@ -67,6 +69,7 @@ class BuiltinCalculatorTool:
 class BuiltinEchoTool:
     name = "echo"
     description = "Echo back a message (useful for testing)."
+    required_scopes: list[str] = []
     parameters = {
         "type": "object",
         "properties": {

@@ -22,6 +22,7 @@ def _format_ticket(ticket: dict[str, Any]) -> str:
 
 class KnowledgeBaseLookupTool:
     name = "knowledge_base_lookup"
+    required_scopes = ["knowledge:read"]
     description = (
         "Search the customer knowledge base for articles relevant to the caller's question. "
         "Use before creating tickets when self-service answers may exist."
@@ -66,6 +67,7 @@ class KnowledgeBaseLookupTool:
 
 class TicketLookupTool:
     name = "ticket_lookup"
+    required_scopes = ["sessions:read"]
     description = (
         "Look up an existing support ticket by ticket ID or customer email. "
         "Use when the caller references a prior case or asks about ticket status."
@@ -116,6 +118,7 @@ class TicketLookupTool:
 
 class TicketCreateTool:
     name = "ticket_create"
+    required_scopes = ["handoffs:write"]
     description = (
         "Create a new support ticket when the issue cannot be resolved via the knowledge base "
         "or requires human follow-up. Include a clear subject and description."
@@ -140,6 +143,10 @@ class TicketCreateTool:
                 "enum": ["low", "normal", "high", "urgent"],
                 "description": "Ticket priority (default normal)",
             },
+            "session_id": {
+                "type": "string",
+                "description": "Voice session ID for idempotent ticket creation",
+            },
         },
         "required": ["subject", "description"],
     }
@@ -158,6 +165,7 @@ class TicketCreateTool:
             description=description,
             customer_email=str(arguments.get("customer_email", "")).strip() or None,
             priority=str(arguments.get("priority", "normal")),
+            session_id=str(arguments.get("session_id", "")).strip() or None,
         )
 
         with _tracer.start_as_current_span("support.ticket_create") as span:

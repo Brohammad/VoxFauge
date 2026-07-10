@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from voxforge.config import Settings
 from voxforge.core.events.bus import EventBus
 from voxforge.infrastructure.db.evaluation_repository import EvaluationRepository
+from voxforge.infrastructure.db.handoff_repository import HandoffRepository
 from voxforge.infrastructure.db.memory_repository import MemoryRepository
 from voxforge.infrastructure.db.outcome_repository import OutcomeRepository
 from voxforge.infrastructure.db.tool_repository import ToolCallRepository
@@ -18,11 +19,16 @@ from voxforge.infrastructure.providers.factory import (
     create_stt_provider,
     create_tts_provider,
 )
+from voxforge.infrastructure.providers.support.factory import create_ticketing_provider
 from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
 from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
+from voxforge.infrastructure.tools.registry_factory import create_tool_registry
 from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
 from voxforge.modules.evaluation.application.service import EvaluationEngine
-from voxforge.infrastructure.tools.registry_factory import create_tool_registry
+from voxforge.modules.handoff.application.orchestrator import HandoffOrchestrator
+from voxforge.modules.handoff.application.policy import HandoffPolicyEngine
+from voxforge.modules.handoff.application.replay_link import ReplayLinkService
+from voxforge.modules.handoff.application.summarizer import ExtractiveConversationSummarizer
 from voxforge.modules.mcp_tool_router.application.router import ToolRouter
 from voxforge.modules.memory.application.service import MemoryService
 from voxforge.modules.outcomes.application.service import OutcomeExtractionService
@@ -49,6 +55,20 @@ def build_voice_pipeline_bundle(
     stt = create_stt_provider(settings)
     llm = create_llm_provider(settings)
 
+    handoff_orchestrator: HandoffOrchestrator | None = None
+    handoff_policy: HandoffPolicyEngine | None = None
+    if settings.handoff_enabled:
+        handoff_orchestrator = HandoffOrchestrator(
+            HandoffRepository(db_session),
+            create_ticketing_provider(settings),
+            ExtractiveConversationSummarizer(session_manager),
+            ReplayLinkService(settings),
+            session_manager,
+            settings,
+        )
+        if settings.handoff_auto_policy:
+            handoff_policy = HandoffPolicyEngine()
+
     memory_service: MemoryService | None = None
     if settings.memory_enabled:
         memory_service = MemoryService(
@@ -64,7 +84,11 @@ def build_voice_pipeline_bundle(
     tool_router: ToolRouter | None = None
     if settings.tools_enabled:
         tool_router = ToolRouter(
-            create_tool_registry(settings, mcp_registry=mcp_registry),
+            create_tool_registry(
+                settings,
+                mcp_registry=mcp_registry,
+                handoff_orchestrator=handoff_orchestrator,
+            ),
             settings,
             ToolCallRepository(db_session),
         )
@@ -87,6 +111,8 @@ def build_voice_pipeline_bundle(
         memory_service,
         evaluation_engine,
         outcome_service,
+        handoff_orchestrator=handoff_orchestrator,
+        handoff_policy=handoff_policy,
     )
     return VoicePipelineBundle(
         session_manager=session_manager,

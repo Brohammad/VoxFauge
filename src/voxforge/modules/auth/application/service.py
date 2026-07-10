@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from voxforge.config import Settings
 from voxforge.core.domain.auth import (
+    ALL_API_KEY_SCOPES,
     ApiKey,
     LoginRequest,
     Organization,
@@ -175,6 +176,12 @@ class AuthService:
         expires_at: datetime | None = None,
     ) -> tuple[ApiKey, str]:
         self._require_scope(actor, "api_keys:write", org_id)
+        invalid_scopes = sorted(set(scopes) - ALL_API_KEY_SCOPES)
+        if invalid_scopes:
+            raise ForbiddenError(f"Invalid API key scopes: {', '.join(invalid_scopes)}")
+        for scope in scopes:
+            if not actor.has_scope(scope):
+                raise ForbiddenError(f"Cannot grant scope you do not have: {scope}")
         raw_key, key_prefix, key_hash = generate_api_key(
             self._settings.api_key_prefix, self._settings.api_key_hash_pepper
         )
@@ -246,9 +253,7 @@ class AuthService:
             expires_in=self._settings.jwt_access_token_expire_minutes * 60,
         )
 
-    async def _resolve_membership(
-        self, user_id: UUID, org_id: UUID | None
-    ) -> OrganizationMember:
+    async def _resolve_membership(self, user_id: UUID, org_id: UUID | None) -> OrganizationMember:
         if org_id:
             membership = await self._members.get_membership(org_id=org_id, user_id=user_id)
             if membership is None:

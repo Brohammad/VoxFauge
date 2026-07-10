@@ -31,6 +31,7 @@ class OrchestratorState(TypedDict):
     iteration: int
     session_id: str | None
     org_id: str | None
+    caller_scopes: list[str]
     agent_trace: Annotated[list[dict], lambda a, b: a + b]
     tool_calls: Annotated[list[dict], lambda a, b: a + b]
 
@@ -96,9 +97,7 @@ def build_agent_graph(settings: Settings, tool_router: Any | None = None):
         }
 
     async def safety(state: OrchestratorState) -> dict:
-        prompt = (
-            f"{SAFETY_PROMPT}\n\nUser: {state['user_input']}\nPlan: {state.get('plan', '')}"
-        )
+        prompt = f"{SAFETY_PROMPT}\n\nUser: {state['user_input']}\nPlan: {state.get('plan', '')}"
         response = await safety_llm.ainvoke([HumanMessage(content=prompt)])
         content = response.content if isinstance(response.content, str) else str(response.content)
         parsed = _parse_json(content)
@@ -111,9 +110,7 @@ def build_agent_graph(settings: Settings, tool_router: Any | None = None):
             "agent_trace": _trace("safety", status, reason or "passed"),
         }
         if not passed:
-            result["final_response"] = (
-                "I'm sorry, but I can't help with that request."
-            )
+            result["final_response"] = "I'm sorry, but I can't help with that request."
         return result
 
     async def executor(state: OrchestratorState) -> dict:
@@ -137,9 +134,7 @@ def build_agent_graph(settings: Settings, tool_router: Any | None = None):
         session_id = _parse_uuid(state.get("session_id"))
 
         lc_tools = (
-            tool_router.get_langchain_tools()
-            if tool_router and settings.tools_enabled
-            else []
+            tool_router.get_langchain_tools() if tool_router and settings.tools_enabled else []
         )
         llm = executor_llm.bind_tools(lc_tools) if lc_tools else executor_llm
 
@@ -150,9 +145,7 @@ def build_agent_graph(settings: Settings, tool_router: Any | None = None):
             tool_calls = getattr(response, "tool_calls", None) or []
             if not tool_calls:
                 draft = (
-                    response.content
-                    if isinstance(response.content, str)
-                    else str(response.content)
+                    response.content if isinstance(response.content, str) else str(response.content)
                 )
                 break
 
@@ -165,26 +158,25 @@ def build_agent_graph(settings: Settings, tool_router: Any | None = None):
                     args,
                     org_id=org_id,
                     session_id=session_id,
+                    caller_scopes=state.get("caller_scopes", []),
                 )
                 output = tool_result.output or tool_result.error or ""
-                recorded_calls.append({
-                    "tool": tool_name,
-                    "arguments": args,
-                    "status": tool_result.status.value,
-                    "output": output[:500],
-                })
+                recorded_calls.append(
+                    {
+                        "tool": tool_name,
+                        "arguments": args,
+                        "status": tool_result.status.value,
+                        "output": output[:500],
+                    }
+                )
                 tool_trace.extend(
                     _trace("tool", tool_result.status.value, f"{tool_name}: {output[:120]}")
                 )
-                lc_messages.append(
-                    ToolMessage(content=output, tool_call_id=tc["id"])
-                )
+                lc_messages.append(ToolMessage(content=output, tool_call_id=tc["id"]))
         else:
             if response is not None:
                 draft = (
-                    response.content
-                    if isinstance(response.content, str)
-                    else str(response.content)
+                    response.content if isinstance(response.content, str) else str(response.content)
                 )
 
         return {

@@ -16,6 +16,7 @@ _tracer = get_tracer(__name__)
 
 class HandoffToHumanTool:
     name = "handoff_to_human"
+    required_scopes = ["handoffs:write"]
     description = (
         "Escalate the conversation to a human agent. Creates a support ticket, "
         "packages conversation context, and assigns a human operator."

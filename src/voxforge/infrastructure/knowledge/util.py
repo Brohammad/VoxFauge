@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 
 
@@ -12,6 +13,14 @@ def sha256_text(text: str) -> str:
 
 def normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip())
+
+
+def safe_upload_filename(filename: str) -> str:
+    """Return a basename-only filename safe for blob storage keys."""
+    name = os.path.basename(filename.replace("\\", "/")).strip()
+    if not name or name in {".", ".."}:
+        return "document.txt"
+    return name[:255]
 
 
 def detect_source_type(filename: str, content_type: str | None = None) -> str:
