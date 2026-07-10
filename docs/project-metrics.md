@@ -1,23 +1,23 @@
 # VoxForge Project Metrics
 
 > Single source of truth for repository engineering metrics.  
-> Last updated: 2026-07-09  
+> Last updated: 2026-07-10  
 > Regenerate: `python scripts/generate_project_metrics.py`
 
 ## Summary
 
 | Metric | Value |
 |--------|------:|
-| Application modules | 17 |
-| REST endpoints | 58 |
+| Application modules | 19 |
+| REST endpoints | 72 |
 | WebSocket endpoints | 1 |
-| Tests collected | 154 |
-| Line coverage (`src/voxforge`) | n/a |
-| ADRs | 4 |
-| Architecture documents | 17 |
-| Benchmark documents | 1 |
+| Tests collected | 352 |
+| Line coverage (`src/voxforge`) | 76.9% |
+| ADRs | 7 |
+| Architecture documents | 25 |
+| Benchmark documents | 2 |
 
-## Application modules (17)
+## Application modules (19)
 
 - `agent_config`
 - `agent_orchestrator`
@@ -26,6 +26,8 @@
 - `conversation`
 - `dashboard`
 - `evaluation`
+- `handoff`
+- `knowledge`
 - `livekit_gateway`
 - `mcp_tool_router`
 - `memory`
@@ -41,7 +43,7 @@
 
 | Transport | Count | Entry points |
 |-----------|------:|--------------|
-| REST | 58 | `/api/v1/*` routers |
+| REST | 72 | `/api/v1/*` routers |
 | WebSocket | 1 | `/api/v1/ws/voice` |
 
 ## Tests
@@ -53,35 +55,47 @@ Run: `PYTHONPATH=. pytest -v`
 | Unit | `tests/unit/` |
 | Integration | `tests/integration/` |
 
-## Architecture decision records (4)
+## Architecture decision records (7)
 
 - [ADR-001-programmatic-voice-pipeline-runner.md](adr/ADR-001-programmatic-voice-pipeline-runner.md)
 - [ADR-002-onboarding-session-lifecycle.md](adr/ADR-002-onboarding-session-lifecycle.md)
 - [ADR-003-mcp-runtime-discovery.md](adr/ADR-003-mcp-runtime-discovery.md)
 - [ADR-004-livekit-transport-adapter.md](adr/ADR-004-livekit-transport-adapter.md)
+- [ADR-005-enterprise-knowledge-base.md](adr/ADR-005-enterprise-knowledge-base.md)
+- [ADR-005-retrieval-pipeline.md](adr/ADR-005-retrieval-pipeline.md)
+- [ADR-006-human-handoff.md](adr/ADR-006-human-handoff.md)
 
-## Architecture documents (17)
+## Architecture documents (25)
 
 - [agent-config-versioning.md](architecture/agent-config-versioning.md)
 - [agent-orchestrator.md](architecture/agent-orchestrator.md)
 - [alerts.md](architecture/alerts.md)
 - [authentication.md](architecture/authentication.md)
 - [ci-hardening.md](architecture/ci-hardening.md)
+- [customer-support-tools.md](architecture/customer-support-tools.md)
 - [dashboard.md](architecture/dashboard.md)
 - [evaluation-engine.md](architecture/evaluation-engine.md)
+- [failure-recovery.md](architecture/failure-recovery.md)
+- [human-handoff.md](architecture/human-handoff.md)
+- [integrity-concurrency.md](architecture/integrity-concurrency.md)
+- [knowledge-base.md](architecture/knowledge-base.md)
 - [livekit-integration.md](architecture/livekit-integration.md)
 - [livekit-webrtc.md](architecture/livekit-webrtc.md)
 - [mcp-runtime-discovery.md](architecture/mcp-runtime-discovery.md)
 - [mcp-tool-router.md](architecture/mcp-tool-router.md)
 - [memory.md](architecture/memory.md)
+- [metrics.md](architecture/metrics.md)
 - [observability.md](architecture/observability.md)
 - [onboarding-voice-pipeline.md](architecture/onboarding-voice-pipeline.md)
 - [outcomes.md](architecture/outcomes.md)
+- [rate-limiting.md](architecture/rate-limiting.md)
 - [replay.md](architecture/replay.md)
+- [session-consistency.md](architecture/session-consistency.md)
 - [voice-pipeline.md](architecture/voice-pipeline.md)
 
-## Benchmarks (1)
+## Benchmarks (2)
 
+- [knowledge-base.md](benchmarks/knowledge-base.md)
 - [onboarding.md](benchmarks/onboarding.md)
 
 ## Supported providers

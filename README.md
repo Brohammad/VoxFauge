@@ -1,37 +1,33 @@
 # VoxForge
 
+[![CI](https://github.com/Brohammad/VoxForge/actions/workflows/ci.yml/badge.svg)](https://github.com/Brohammad/VoxForge/actions/workflows/ci.yml)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Production-grade Voice AI Infrastructure Platform for enterprise applications.
 
 ## Quick Start
 
 ```bash
-# Copy environment variables
 cp .env.example .env
-
-# Start infrastructure
 docker compose up -d postgres redis
-
-# Install dependencies
-pip install -e ".[dev]"
-
-# Run migrations
+pip install -e ".[dev,livekit]"
 alembic upgrade head
-
-# Start the API server
 uvicorn voxforge.main:app --reload --app-dir src
 ```
 
-API docs: http://localhost:8000/api/v1/docs
+| Surface | URL |
+|---------|-----|
+| API docs | http://localhost:8000/api/v1/docs |
+| Landing | http://localhost:8000/ |
+| Demo | http://localhost:8000/demo |
+| Dashboard | http://localhost:8000/dashboard |
 
-Landing: http://localhost:8000/
-
-Demo: http://localhost:8000/demo
-
-Dashboard: http://localhost:8000/dashboard
+The demo and dashboard work out of the box with **mock providers** (no API keys). Register an account in the dashboard or use the one-click demo at `/demo`.
 
 ## Production deployment
 
-See [docs/deployment/guide.md](docs/deployment/guide.md) for VPS deployment with Docker Compose, NGINX, HTTPS, and the public demo.
+See [docs/deployment/guide.md](docs/deployment/guide.md) for VPS deployment with Docker Compose, NGINX, and HTTPS.
 
 ```bash
 cp .env.production.example .env.production
@@ -39,35 +35,60 @@ cp .env.production.example .env.production
 ./deploy.sh init
 ```
 
+Validate before deploy:
+
+```bash
+python scripts/validate_production_env.py
+```
+
 ## Architecture
 
 VoxForge is a modular monolith built with Clean Architecture principles:
 
-- **Authentication** — JWT, RBAC, organizations, API keys
-- **Agent Orchestrator** — LangGraph multi-agent pipeline (planner, safety, executor, critic, coordinator)
-- **Memory** — Semantic retrieval, summarization, and context compression (pgvector)
-- **MCP Tool Router** — Builtin tools + MCP server integration for agent executor
-- **Evaluation Engine** — Per-turn latency, quality, tool, and cost scoring
-- **Dashboard** — Web UI + analytics API for sessions, latency, evaluations, activity, outcomes
-- **Voice Gateway** — WebSocket transport for real-time audio streaming
-- **Session Manager** — Voice session lifecycle and reconnect support
-- **STT Module** — Streaming speech recognition (Deepgram)
-- **Conversation Engine** — Streaming LLM responses (OpenAI)
-- **TTS Module** — Streaming text-to-speech (Cartesia)
+| Module | Responsibility |
+|--------|----------------|
+| **Auth** | JWT, RBAC, organizations, API keys, SAML SSO |
+| **Voice Gateway** | WebSocket transport, `VoicePipelineService` orchestration |
+| **Agent Orchestrator** | LangGraph multi-agent pipeline (planner, safety, executor, critic) |
+| **Memory** | Semantic retrieval, summarization, pgvector |
+| **Knowledge** | Document ingestion, chunking, embedding search, citations |
+| **Handoff** | Human escalation queue, replay links, ticketing integration |
+| **Evaluation** | Per-turn latency, quality, tool, and cost scoring |
+| **Dashboard** | Operator UI + analytics API |
+| **MCP Tool Router** | Builtin tools + MCP server discovery |
+| **LiveKit Gateway** | WebRTC token generation and worker dispatch |
 
-See [docs/architecture/voice-pipeline.md](docs/architecture/voice-pipeline.md) for details.
+Voice providers (STT, LLM, TTS, embeddings) live in `infrastructure/providers/` and are selected via environment variables.
+
+See [docs/architecture/voice-pipeline.md](docs/architecture/voice-pipeline.md) for the pipeline design.
 
 Pilot value checklist: [docs/product/prove-value-in-1-day.md](docs/product/prove-value-in-1-day.md).
 
 ## Development
 
 ```bash
-# Run tests
-pytest
+make test              # full pytest suite
+make test-cov          # with 70% coverage gate
+ruff check src tests   # lint
 
-# Lint
-ruff check src tests
-
-# Test voice WebSocket
+# Voice WebSocket smoke test
 python scripts/test_voice_ws.py
+
+# Manual QA harness (running server required)
+python scripts/e2e_qa_manual.py
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contributor guidelines.
+
+## Documentation
+
+- [Deployment guide](docs/deployment/guide.md)
+- [Testing strategy](docs/testing/testing-strategy.md)
+- [Architecture index](docs/architecture/)
+- [ADRs](docs/adr/)
+- [Security policy](SECURITY.md)
+- [Changelog](CHANGELOG.md)
+
+## License
+
+MIT — see [LICENSE](LICENSE).
