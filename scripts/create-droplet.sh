@@ -9,6 +9,14 @@
 
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+if [[ -f "$ROOT/.env.deploy" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env.deploy"
+  set +a
+fi
+
 TOKEN="${TOKEN:-${DO_API_TOKEN:-}}"
 : "${TOKEN:?Set TOKEN or DO_API_TOKEN (DigitalOcean API token)}"
 

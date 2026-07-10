@@ -11,6 +11,13 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+if [[ -f "$ROOT/.env.deploy" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env.deploy"
+  set +a
+fi
+
 DROPLET_IP="${DROPLET_IP:-}"
 REPO_URL="${REPO_URL:-https://github.com/Brohammad/VoxFauge.git}"
 SSH_USER="${SSH_USER:-root}"

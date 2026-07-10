@@ -21,6 +21,7 @@ wheels/
 
 .env
 .env.production
+.env.deploy
 .venv
 env/
 venv/
