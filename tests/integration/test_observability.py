@@ -145,8 +145,12 @@ async def test_replay_service_emits_trace_span(db_session):
 
     repo = ReplayRepository(db_session)
     service = ReplayService(repo)
+    tracer = provider.get_tracer("test.replay")
 
-    with patch.object(repo, "get_session_replay", return_value=object()):
+    with (
+        patch.object(repo, "get_session_replay", return_value=object()),
+        patch("voxforge.modules.replay.application.service._tracer", tracer),
+    ):
         await service.get_session_replay(
             UUID("00000000-0000-0000-0000-000000000001"),
             org_id=UUID("00000000-0000-0000-0000-000000000010"),
