@@ -24,6 +24,10 @@ log() { printf '==> %s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 require_env_file() {
+  if [[ ! -f "$ENV_FILE" ]]; then
+    log "No $ENV_FILE found — generating from template..."
+    "$ROOT/scripts/setup-production-env.sh"
+  fi
   [[ -f "$ENV_FILE" ]] || die "Missing $ENV_FILE — copy .env.production.example and fill secrets."
 }
 

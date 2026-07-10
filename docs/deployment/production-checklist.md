@@ -13,7 +13,7 @@ Use this checklist before announcing the public URL.
 - [ ] `JWT_SECRET_KEY` set (`openssl rand -hex 32`)
 - [ ] `API_KEY_HASH_PEPPER` set (`openssl rand -hex 32`)
 - [ ] `PUBLIC_BASE_URL`, `TRUSTED_HOSTS`, `CORS_ORIGINS` match domain
-- [ ] `ENV_FILE=.env.production APP_ENV=production python scripts/validate_production_env.py` passes
+- [ ] `./deploy.sh init` passes production validation (runs automatically in the app container)
 
 ## Deploy
 

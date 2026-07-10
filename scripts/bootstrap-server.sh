@@ -32,4 +32,4 @@ ufw allow 443/tcp
 ufw --force enable
 
 log "Bootstrap complete."
-log "Next: clone repo, configure .env.production, run ./deploy.sh init"
+log "Next: clone repo, then run ./deploy.sh init (creates .env.production automatically if missing)"

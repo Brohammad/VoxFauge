@@ -11,8 +11,12 @@ Common production issues and resolutions.
 **Fix:**
 
 ```bash
-ENV_FILE=.env.production APP_ENV=production python scripts/validate_production_env.py
+docker compose -f docker-compose.prod.yml --env-file .env.production build app
+docker compose -f docker-compose.prod.yml --env-file .env.production run --rm --no-deps \
+  -e APP_ENV=production --entrypoint python app /app/scripts/validate_production_env.py
 ```
+
+Or re-run `./deploy.sh init`, which validates inside the app container automatically.
 
 Ensure `JWT_SECRET_KEY` and `API_KEY_HASH_PEPPER` are at least 32 characters and do not contain `change-me`. Set `TRUSTED_HOSTS` to your domain.
 
