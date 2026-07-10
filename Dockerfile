@@ -13,6 +13,7 @@ COPY alembic ./alembic
 COPY alembic.ini ./
 COPY dashboard ./dashboard
 COPY examples ./examples
+COPY public ./public
 COPY scripts ./scripts
 
 RUN chmod +x /app/scripts/docker-entrypoint.sh

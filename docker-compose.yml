@@ -39,6 +39,7 @@ services:
       - ./alembic:/app/alembic
       - ./dashboard:/app/dashboard
       - ./examples:/app/examples
+      - ./public:/app/public
     depends_on:
       postgres:
         condition: service_healthy
