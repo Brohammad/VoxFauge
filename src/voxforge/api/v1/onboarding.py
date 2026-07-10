@@ -7,6 +7,7 @@ from voxforge.api.dependencies import (
     get_onboarding_pipeline_runner,
     get_onboarding_service,
     get_session_manager,
+    rate_limit_category,
     require_scope,
 )
 from voxforge.core.domain.auth import Principal
@@ -57,6 +58,7 @@ async def onboarding_connect_token(
 @router.post("/run-sample-call", response_model=OnboardingRunResponse)
 async def onboarding_run_sample_call(
     principal: Principal = Depends(require_scope("sessions:write")),
+    _: None = Depends(rate_limit_category("onboarding_sample")),
     onboarding: OnboardingService = Depends(get_onboarding_service),
     session_manager: SessionManager = Depends(get_session_manager),
     pipeline_runner: ProgrammaticPipelineRunner = Depends(get_onboarding_pipeline_runner),

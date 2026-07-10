@@ -4,13 +4,18 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from voxforge.api.dependencies import get_handoff_orchestrator, get_session_manager, require_scope
+from voxforge.api.dependencies import (
+    get_handoff_orchestrator,
+    get_session_manager,
+    rate_limit_category,
+    require_scope,
+)
 from voxforge.config import get_settings
 from voxforge.core.domain.auth import Principal
 from voxforge.core.domain.entities import SessionStatus, TransportType, VoiceSession
+from voxforge.core.domain.handoff import HandoffTrigger
 from voxforge.core.exceptions import SessionNotFoundError
 from voxforge.infrastructure.db.session import get_db_session
-from voxforge.core.domain.handoff import HandoffTrigger
 from voxforge.modules.handoff.application.orchestrator import HandoffOrchestrator
 from voxforge.modules.handoff.application.policy_loader import load_escalation_policy
 from voxforge.modules.session_manager.application.service import SessionManager
@@ -74,6 +79,7 @@ class MessagesListResponse(BaseModel):
 async def create_session(
     body: CreateSessionRequest,
     principal: Principal = Depends(require_scope("sessions:write")),
+    _: None = Depends(rate_limit_category("sessions_create")),
     session_manager: SessionManager = Depends(get_session_manager),
     db: AsyncSession = Depends(get_db_session),
 ) -> CreateSessionResponse:
@@ -147,7 +153,9 @@ async def initiate_session_handoff(
         )
         await session_manager.commit()
         await db.commit()
-        record = await HandoffRepository(db).get_handoff(package.handoff_id, org_id=principal.org_id)
+        record = await HandoffRepository(db).get_handoff(
+            package.handoff_id, org_id=principal.org_id
+        )
         return _to_response(record)
     except SessionNotFoundError:
         raise HTTPException(status_code=404, detail="Session not found") from None

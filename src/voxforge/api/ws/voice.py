@@ -2,16 +2,21 @@ import asyncio
 import json
 from uuid import UUID
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from voxforge.api.ws.auth import resolve_ws_principal
 from voxforge.config import get_settings
+from voxforge.core.domain.auth import effective_scopes
 from voxforge.core.domain.entities import TransportType
 from voxforge.core.domain.events import AudioChunk, TranscriptEvent
 from voxforge.core.events.bus import get_event_bus
 from voxforge.core.exceptions import ForbiddenError, SessionNotFoundError, UnauthorizedError
 from voxforge.infrastructure.db.session import get_engine
+from voxforge.infrastructure.http.rate_limit import (
+    enforce_authenticated_limits,
+    enforce_ws_connect_limit,
+)
 from voxforge.infrastructure.observability.logging import get_logger
 from voxforge.infrastructure.observability.metrics import active_sessions, ws_connections
 from voxforge.infrastructure.redis.client import get_redis
@@ -31,6 +36,15 @@ router = APIRouter()
 
 @router.websocket("/api/v1/ws/voice")
 async def voice_websocket(websocket: WebSocket) -> None:
+    settings = get_settings()
+    connect_result = await enforce_ws_connect_limit(websocket, settings=settings)
+    if not connect_result.allowed:
+        reason = (
+            "Rate limiting unavailable" if connect_result.redis_error else "Rate limit exceeded"
+        )
+        await websocket.close(code=1008, reason=reason)
+        return
+
     await websocket.accept()
     ws_connections.inc()
     settings = get_settings()
@@ -122,8 +136,12 @@ async def voice_websocket(websocket: WebSocket) -> None:
                     sm = SessionManager(db_session, state_store, get_event_bus(), settings)
                     await sm.end_session(session_id, reason="disconnect")
                     await db_session.commit()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "ws_disconnect_cleanup_failed",
+                    session_id=str(session_id),
+                    error=str(exc),
+                )
 
 
 async def _handle_control_message(
@@ -162,6 +180,25 @@ async def _handle_control_message(
             await websocket.send_json({"type": "error", "code": exc.code, "message": exc.message})
             return result
 
+        try:
+            await enforce_authenticated_limits(
+                path="/api/v1/ws/voice",
+                settings=settings,
+                category="voice_ws",
+                org_id=str(principal.org_id),
+                user_id=str(principal.user_id) if principal.user_id else None,
+                api_key_id=str(principal.api_key_id) if principal.api_key_id else None,
+            )
+        except HTTPException as exc:
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "code": "rate_limit_exceeded",
+                    "message": exc.detail,
+                }
+            )
+            return result
+
         if resume_id:
             try:
                 session = await session_manager.get_session(
@@ -170,12 +207,17 @@ async def _handle_control_message(
                 session = await session_manager.resume_session(
                     UUID(resume_id), msg.get("last_sequence", 0)
                 )
+                response_generator.set_caller_scopes(session.id, effective_scopes(principal))
             except SessionNotFoundError:
                 await websocket.send_json(
                     {"type": "error", "code": "session_not_found", "message": "Session not found"}
                 )
                 return result
         else:
+            config = {
+                **config,
+                "caller_scopes": effective_scopes(principal),
+            }
             session = await session_manager.create_session(
                 transport_type=TransportType.WEBSOCKET,
                 config=config,
@@ -186,8 +228,16 @@ async def _handle_control_message(
         session = await session_manager.activate_session(session.id)
         await session_manager.commit()
 
+        import structlog
+
+        structlog.contextvars.bind_contextvars(
+            session_id=str(session.id),
+            org_id=str(principal.org_id),
+        )
+
         response_generator.init_session(session.id)
         response_generator.set_session_org(session.id, principal.org_id)
+        response_generator.set_caller_scopes(session.id, effective_scopes(principal))
         pipeline.set_session_org(session.id, principal.org_id)
         messages = await session_manager.get_messages(session.id)
         if messages:
@@ -247,13 +297,15 @@ async def _handle_control_message(
 
 def _build_callbacks(websocket: WebSocket) -> PipelineCallbacks:
     async def on_transcript(event: TranscriptEvent) -> None:
-        await websocket.send_json({
-            "type": "transcript",
-            "partial": event.is_partial,
-            "text": event.text,
-            "confidence": event.confidence,
-            "language": event.language,
-        })
+        await websocket.send_json(
+            {
+                "type": "transcript",
+                "partial": event.is_partial,
+                "text": event.text,
+                "confidence": event.confidence,
+                "language": event.language,
+            }
+        )
 
     async def on_token(text: str) -> None:
         await websocket.send_json({"type": "response", "token": text})
@@ -262,24 +314,28 @@ def _build_callbacks(websocket: WebSocket) -> PipelineCallbacks:
         await websocket.send_bytes(chunk.data)
 
     async def on_metrics(metrics) -> None:
-        await websocket.send_json({
-            "type": "metric",
-            "stt_ms": metrics.stt_ms,
-            "llm_first_token_ms": metrics.llm_first_token_ms,
-            "tts_first_byte_ms": metrics.tts_first_byte_ms,
-            "e2e_ms": metrics.e2e_ms,
-        })
+        await websocket.send_json(
+            {
+                "type": "metric",
+                "stt_ms": metrics.stt_ms,
+                "llm_first_token_ms": metrics.llm_first_token_ms,
+                "tts_first_byte_ms": metrics.tts_first_byte_ms,
+                "e2e_ms": metrics.e2e_ms,
+            }
+        )
 
     async def on_error(code: str, message: str) -> None:
         await websocket.send_json({"type": "error", "code": code, "message": message})
 
     async def on_agent_step(agent: str, status: str, payload: dict) -> None:
-        await websocket.send_json({
-            "type": "agent_step",
-            "agent": agent,
-            "status": status,
-            **payload,
-        })
+        await websocket.send_json(
+            {
+                "type": "agent_step",
+                "agent": agent,
+                "status": status,
+                **payload,
+            }
+        )
 
     return PipelineCallbacks(
         on_transcript=on_transcript,

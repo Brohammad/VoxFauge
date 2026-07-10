@@ -3,7 +3,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from voxforge.api.dependencies import get_memory_service, get_session_manager, require_scope
+from voxforge.api.dependencies import (
+    get_memory_service,
+    get_session_manager,
+    rate_limit_category,
+    require_scope,
+)
 from voxforge.core.domain.auth import Principal
 from voxforge.core.exceptions import SessionNotFoundError
 from voxforge.modules.memory.application.service import MemoryService
@@ -78,6 +83,7 @@ async def list_memory(
 async def search_memory(
     session_id: UUID,
     body: MemorySearchRequest,
+    _: None = Depends(rate_limit_category("memory_search")),
     principal: Principal = Depends(require_scope("sessions:read")),
     session_manager: SessionManager = Depends(get_session_manager),
     memory_service: MemoryService | None = Depends(get_memory_service),

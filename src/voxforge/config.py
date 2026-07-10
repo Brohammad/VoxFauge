@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     demo_password_hint: str = "VoxForgeDemo!"
 
     rate_limit_enabled: bool = True
+    rate_limit_multiplier: float = 1.0
+    rate_limit_fail_closed_categories: str = (
+        "auth,auth_login,demo,sessions_create,voice_ws,livekit,"
+        "knowledge_upload,knowledge_reindex,knowledge_collections,"
+        "replay,onboarding_sample,onboarding,api_keys"
+    )
+    # Deprecated — middleware now uses category policies for all /api/v1 routes.
     rate_limit_per_minute: int = 60
     rate_limit_paths: str = "/api/v1/auth,/api/v1/demo"
 
@@ -45,6 +52,12 @@ class Settings(BaseSettings):
     default_tts_voice_id: str = "79a125e8-cd45-4c13-8a67-188112f4dd22"
 
     otel_exporter_otlp_endpoint: str = ""
+
+    metrics_allow_anonymous: bool | None = None
+    metrics_bearer_token: str = ""
+    metrics_allowed_ips: str = ""
+
+    knowledge_worker_heartbeat_stale_seconds: int = 60
 
     session_heartbeat_interval_seconds: int = 15
     session_stale_timeout_seconds: int = 45
@@ -97,6 +110,7 @@ class Settings(BaseSettings):
     knowledge_search_top_k: int = 5
     knowledge_search_min_similarity: float = 0.65
     knowledge_context_enabled: bool = True
+    knowledge_max_upload_bytes: int = 52_428_800  # 50 MiB
     embedding_provider: str = "mock"  # openai | mock
     ticketing_provider: str = "mock"  # mock | zendesk | freshdesk
     zendesk_subdomain: str = ""
@@ -136,12 +150,28 @@ class Settings(BaseSettings):
         return tuple(p.strip() for p in self.rate_limit_paths.split(",") if p.strip())
 
     @property
+    def rate_limit_fail_closed_categories_set(self) -> frozenset[str]:
+        return frozenset(
+            c.strip() for c in self.rate_limit_fail_closed_categories.split(",") if c.strip()
+        )
+
+    @property
     def trusted_host_list(self) -> list[str]:
         return [h.strip() for h in self.trusted_hosts.split(",") if h.strip()]
 
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def metrics_allow_anonymous_effective(self) -> bool:
+        if self.metrics_allow_anonymous is not None:
+            return self.metrics_allow_anonymous
+        return self.app_env != "production"
+
+    @property
+    def metrics_allowed_ip_list(self) -> tuple[str, ...]:
+        return tuple(ip.strip() for ip in self.metrics_allowed_ips.split(",") if ip.strip())
 
 
 @lru_cache

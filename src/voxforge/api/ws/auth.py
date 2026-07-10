@@ -13,6 +13,8 @@ async def resolve_ws_principal(
     message: dict | None = None,
 ) -> Principal:
     if not settings.auth_required:
+        if settings.app_env == "production":
+            raise UnauthorizedError("AUTH_REQUIRED must be enabled in production")
         from uuid import UUID
 
         return Principal(

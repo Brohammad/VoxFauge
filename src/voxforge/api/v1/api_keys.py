@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from voxforge.api.dependencies import get_auth_service, get_current_principal
+from voxforge.api.dependencies import get_auth_service, get_current_principal, rate_limit_category
 from voxforge.core.domain.auth import ApiKey, Principal
 from voxforge.core.exceptions import ApiKeyNotFoundError, ForbiddenError
 from voxforge.infrastructure.db.session import get_db_session
@@ -39,6 +39,7 @@ class CreateApiKeyResponse(ApiKeyResponse):
 @router.post("", response_model=CreateApiKeyResponse, status_code=201)
 async def create_api_key(
     body: CreateApiKeyRequest,
+    _: None = Depends(rate_limit_category("api_keys")),
     principal: Principal = Depends(get_current_principal),
     auth_service: AuthService = Depends(get_auth_service),
     db: AsyncSession = Depends(get_db_session),

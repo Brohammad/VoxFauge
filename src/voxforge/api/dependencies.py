@@ -9,6 +9,7 @@ from voxforge.core.domain.auth import Principal
 from voxforge.core.events.bus import EventBus, get_event_bus
 from voxforge.core.exceptions import ForbiddenError, UnauthorizedError
 from voxforge.infrastructure.db.dashboard_repository import DashboardRepository
+from voxforge.infrastructure.db.evaluation_repository import EvaluationRepository
 from voxforge.infrastructure.db.handoff_repository import HandoffRepository
 from voxforge.infrastructure.db.knowledge_repository import KnowledgeRepository
 from voxforge.infrastructure.db.memory_repository import MemoryRepository
@@ -16,22 +17,23 @@ from voxforge.infrastructure.db.outcome_repository import OutcomeRepository
 from voxforge.infrastructure.db.replay_repository import ReplayRepository
 from voxforge.infrastructure.db.session import get_db_session
 from voxforge.infrastructure.db.tool_repository import ToolCallRepository
+from voxforge.infrastructure.http.rate_limit import enforce_authenticated_limits
+from voxforge.infrastructure.knowledge.blob import create_blob_store
 from voxforge.infrastructure.livekit.token_service import LiveKitTokenService
-from voxforge.infrastructure.providers.support.factory import (
-    create_knowledge_base_provider,
-    create_ticketing_provider,
-)
 from voxforge.infrastructure.providers.embeddings.factory import create_embedding_provider
-from voxforge.infrastructure.providers.embeddings.openai import OpenAIEmbeddingProvider
 from voxforge.infrastructure.providers.factory import (
     create_llm_provider,
     create_stt_provider,
     create_tts_provider,
 )
 from voxforge.infrastructure.providers.llm.openai import OpenAILLMProvider
+from voxforge.infrastructure.providers.support.factory import (
+    create_ticketing_provider,
+)
 from voxforge.infrastructure.redis.client import get_redis
 from voxforge.infrastructure.redis.session_state import RedisSessionStateStore
 from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
+from voxforge.infrastructure.tools.registry_factory import create_tool_registry
 from voxforge.infrastructure.voice.programmatic_runner import ProgrammaticPipelineRunner
 from voxforge.modules.agent_config.application.service import AgentConfigService
 from voxforge.modules.agent_orchestrator.application.factory import create_response_generator
@@ -40,16 +42,15 @@ from voxforge.modules.auth.application.service import AuthService
 from voxforge.modules.auth.application.sso_service import SamlConnectionService
 from voxforge.modules.dashboard.application.service import DashboardService
 from voxforge.modules.evaluation.application.service import EvaluationEngine
-from voxforge.infrastructure.tools.registry_factory import create_tool_registry
-from voxforge.modules.mcp_tool_router.application.router import ToolRouter
-from voxforge.modules.memory.application.service import MemoryService
-from voxforge.infrastructure.knowledge.blob import create_blob_store
-from voxforge.modules.knowledge.application.ingestion_service import KnowledgeIngestionService
-from voxforge.modules.knowledge.application.search_service import KnowledgeSearchService
 from voxforge.modules.handoff.application.orchestrator import HandoffOrchestrator
 from voxforge.modules.handoff.application.policy import HandoffPolicyEngine
 from voxforge.modules.handoff.application.replay_link import ReplayLinkService
 from voxforge.modules.handoff.application.summarizer import ExtractiveConversationSummarizer
+from voxforge.modules.knowledge.application.ingestion_service import KnowledgeIngestionService
+from voxforge.modules.knowledge.application.search_service import KnowledgeSearchService
+from voxforge.modules.mcp_tool_router.application.router import ToolRouter
+from voxforge.modules.memory.application.service import MemoryService
+from voxforge.modules.onboarding.application.service import OnboardingService
 from voxforge.modules.outcomes.application.service import OutcomeExtractionService
 from voxforge.modules.replay.application.service import ReplayService
 from voxforge.modules.session_manager.application.service import SessionManager
@@ -73,6 +74,50 @@ def get_saml_connection_service(
     return SamlConnectionService(db, settings)
 
 
+def get_handoff_repository(
+    db: AsyncSession = Depends(get_db_session),
+) -> HandoffRepository:
+    return HandoffRepository(db)
+
+
+async def get_optional_principal(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Security(bearer_scheme)],
+    api_key: Annotated[str | None, Security(api_key_header)],
+    auth_service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
+) -> Principal | None:
+    if not settings.auth_required:
+        if settings.app_env == "production":
+            raise HTTPException(
+                status_code=500,
+                detail="AUTH_REQUIRED must be enabled in production",
+            )
+        from uuid import UUID
+
+        from voxforge.core.domain.auth import OrgRole, PrincipalType
+
+        return Principal(
+            type=PrincipalType.USER,
+            user_id=UUID("00000000-0000-0000-0000-000000000001"),
+            org_id=UUID("00000000-0000-0000-0000-000000000010"),
+            role=OrgRole.OWNER,
+        )
+
+    if credentials and credentials.credentials:
+        try:
+            return await auth_service.resolve_principal_from_bearer(credentials.credentials)
+        except UnauthorizedError:
+            return None
+
+    if api_key:
+        try:
+            return await auth_service.resolve_principal_from_api_key(api_key)
+        except UnauthorizedError:
+            return None
+
+    return None
+
+
 async def get_current_principal(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Security(bearer_scheme)],
     api_key: Annotated[str | None, Security(api_key_header)],
@@ -80,6 +125,11 @@ async def get_current_principal(
     settings: Settings = Depends(get_settings),
 ) -> Principal:
     if not settings.auth_required:
+        if settings.app_env == "production":
+            raise HTTPException(
+                status_code=500,
+                detail="AUTH_REQUIRED must be enabled in production",
+            )
         from uuid import UUID
 
         from voxforge.core.domain.auth import OrgRole, PrincipalType
@@ -115,6 +165,48 @@ def require_scope(scope: str):
         return principal
 
     return _checker
+
+
+def rate_limit_category(category: str):
+    """Enforce org/session/user/api-key limits after authentication."""
+
+    async def _enforce(
+        request: Request,
+        principal: Principal = Depends(get_current_principal),
+        settings: Settings = Depends(get_settings),
+    ) -> None:
+        await enforce_authenticated_limits(
+            path=request.url.path,
+            settings=settings,
+            category=category,
+            org_id=str(principal.org_id),
+            user_id=str(principal.user_id) if principal.user_id else None,
+            api_key_id=str(principal.api_key_id) if principal.api_key_id else None,
+        )
+
+    return _enforce
+
+
+def rate_limit_category_optional(category: str):
+    """Org/session limits when principal is present (e.g. replay with JWT)."""
+
+    async def _enforce(
+        request: Request,
+        principal: Principal | None = Depends(get_optional_principal),
+        settings: Settings = Depends(get_settings),
+    ) -> None:
+        if principal is None:
+            return
+        await enforce_authenticated_limits(
+            path=request.url.path,
+            settings=settings,
+            category=category,
+            org_id=str(principal.org_id),
+            user_id=str(principal.user_id) if principal.user_id else None,
+            api_key_id=str(principal.api_key_id) if principal.api_key_id else None,
+        )
+
+    return _enforce
 
 
 def get_state_store(settings: Settings = Depends(get_settings)) -> RedisSessionStateStore:

@@ -25,6 +25,17 @@ async def _test_principal() -> Principal:
 
 
 @pytest.fixture(autouse=True)
+def disable_rate_limiting_for_tests(request, monkeypatch):
+    if request.module.__name__.endswith(("test_rate_limiting", "test_rate_limit_integration")):
+        yield
+        return
+    monkeypatch.setenv("RATE_LIMIT_ENABLED", "false")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
 def auth_disabled(request):
     if "auth_client" in request.fixturenames:
         yield

@@ -190,3 +190,38 @@ handoff_resume_total = Counter(
     "Session resume attempts after handoff",
     ["status"],
 )
+session_consistency_total = Counter(
+    "voxforge_session_consistency_total",
+    "Session Postgres/Redis consistency operations",
+    ["operation", "outcome"],
+)
+rate_limit_allowed_total = Counter(
+    "voxforge_rate_limit_allowed_total",
+    "Requests allowed by rate limiter",
+    ["category", "dimension"],
+)
+rate_limit_blocked_total = Counter(
+    "voxforge_rate_limit_blocked_total",
+    "Requests blocked by rate limiter",
+    ["category", "dimension"],
+)
+rate_limit_redis_errors_total = Counter(
+    "voxforge_rate_limit_redis_errors_total",
+    "Rate limiter Redis failures",
+    ["category", "fail_mode"],
+)
+integrity_violations_total = Counter(
+    "voxforge_integrity_violations_total",
+    "Unique constraint violations recovered idempotently",
+    ["resource", "operation"],
+)
+duplicate_suppressed_total = Counter(
+    "voxforge_duplicate_suppressed_total",
+    "Duplicate business operations suppressed idempotently",
+    ["resource"],
+)
+outcome_updates_total = Counter(
+    "voxforge_outcome_updates_total",
+    "Session outcome KPI updates on existing rows",
+    ["intent"],
+)

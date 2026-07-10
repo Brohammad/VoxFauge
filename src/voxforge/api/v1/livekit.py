@@ -3,7 +3,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from voxforge.api.dependencies import get_livekit_service, get_session_manager, require_scope
+from voxforge.api.dependencies import (
+    get_livekit_service,
+    get_session_manager,
+    rate_limit_category,
+    require_scope,
+)
 from voxforge.config import Settings, get_settings
 from voxforge.core.domain.auth import Principal
 from voxforge.core.exceptions import ProviderError, SessionNotFoundError
@@ -30,6 +35,7 @@ class LiveKitTokenResponse(BaseModel):
 async def create_livekit_token(
     session_id: UUID,
     body: LiveKitTokenRequest,
+    _: None = Depends(rate_limit_category("livekit")),
     principal: Principal = Depends(require_scope("sessions:write")),
     session_manager: SessionManager = Depends(get_session_manager),
     livekit: LiveKitTokenService = Depends(get_livekit_service),

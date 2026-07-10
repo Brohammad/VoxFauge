@@ -11,6 +11,7 @@ from voxforge.api.dependencies import (
     get_knowledge_ingestion_service,
     get_knowledge_repository,
     get_knowledge_search_service,
+    rate_limit_category,
     require_scope,
 )
 from voxforge.config import Settings, get_settings
@@ -100,6 +101,7 @@ class SearchResponse(BaseModel):
 async def create_collection(
     body: CollectionCreateRequest,
     _: None = Depends(_require_knowledge),
+    __: None = Depends(rate_limit_category("knowledge_collections")),
     principal: Principal = Depends(require_scope("knowledge:write")),
     repo: KnowledgeRepository = Depends(get_knowledge_repository),
     db: AsyncSession = Depends(get_db_session),
@@ -140,15 +142,22 @@ async def upload_document(
     file: UploadFile = File(...),
     title: str | None = Form(default=None),
     _: None = Depends(_require_knowledge),
+    __: None = Depends(rate_limit_category("knowledge_upload")),
     principal: Principal = Depends(require_scope("knowledge:write")),
     ingestion: KnowledgeIngestionService | None = Depends(get_knowledge_ingestion_service),
     db: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
 ) -> UploadResponse:
     if ingestion is None:
         raise HTTPException(status_code=503, detail="Knowledge base is disabled")
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="Empty file")
+    if len(content) > settings.knowledge_max_upload_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds maximum size of {settings.knowledge_max_upload_bytes} bytes",
+        )
     try:
         document_id, job_id = await ingestion.upload_document(
             org_id=principal.org_id,
@@ -159,7 +168,10 @@ async def upload_document(
             content_type=file.content_type,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        message = str(exc)
+        if "maximum upload size" in message:
+            raise HTTPException(status_code=413, detail=message) from exc
+        raise HTTPException(status_code=404, detail=message) from exc
     await db.commit()
     return UploadResponse(document_id=document_id, job_id=job_id, status="queued")
 
@@ -214,6 +226,7 @@ async def list_document_jobs(
 async def reindex_document(
     document_id: UUID,
     _: None = Depends(_require_knowledge),
+    __: None = Depends(rate_limit_category("knowledge_reindex")),
     principal: Principal = Depends(require_scope("knowledge:write")),
     ingestion: KnowledgeIngestionService | None = Depends(get_knowledge_ingestion_service),
     db: AsyncSession = Depends(get_db_session),
@@ -239,6 +252,7 @@ async def reindex_document(
 async def search_knowledge(
     body: SearchRequestBody,
     _: None = Depends(_require_knowledge),
+    __: None = Depends(rate_limit_category("knowledge_search")),
     principal: Principal = Depends(require_scope("knowledge:read")),
     search: KnowledgeSearchService | None = Depends(get_knowledge_search_service),
 ) -> SearchResponse:

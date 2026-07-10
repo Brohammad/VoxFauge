@@ -3,7 +3,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
-from voxforge.api.dependencies import get_alert_service, get_dashboard_service, require_scope
+from voxforge.api.dependencies import (
+    get_alert_service,
+    get_dashboard_service,
+    rate_limit_category,
+    require_scope,
+)
 from voxforge.core.domain.auth import Principal
 from voxforge.core.domain.dashboard import (
     ActivityItem,
@@ -14,7 +19,11 @@ from voxforge.core.domain.dashboard import (
 from voxforge.modules.alerts.application.service import AlertService
 from voxforge.modules.dashboard.application.service import DashboardService
 
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter(
+    prefix="/dashboard",
+    tags=["dashboard"],
+    dependencies=[Depends(rate_limit_category("dashboard"))],
+)
 
 
 class OverviewResponse(BaseModel):
