@@ -42,8 +42,12 @@ load_env() {
 
 validate_env() {
   load_env
-  log "Validating production environment..."
-  APP_ENV=production ENV_FILE="$ENV_FILE" python3 "$ROOT/scripts/validate_production_env.py"
+  log "Validating production environment (in app container)..."
+  $COMPOSE --env-file "$ENV_FILE" build app
+  $COMPOSE --env-file "$ENV_FILE" run --rm --no-deps \
+    -e APP_ENV=production \
+    --entrypoint python \
+    app /app/scripts/validate_production_env.py
 }
 
 render_nginx_config() {
@@ -113,7 +117,7 @@ bootstrap_tls() {
   done
 
   log "Requesting Let's Encrypt certificate for $DOMAIN..."
-  $COMPOSE --env-file "$ENV_FILE" --profile certbot run --rm certbot certonly \
+  $COMPOSE --env-file "$ENV_FILE" --profile certbot run --rm --entrypoint certbot certbot certonly \
     --webroot -w /var/www/certbot \
     --email "${CERTBOT_EMAIL:-admin@$DOMAIN}" \
     --agree-tos --no-eff-email \
@@ -137,6 +141,7 @@ cmd_init() {
   else
     log "Certificates already provisioned — starting full stack..."
     $COMPOSE --env-file "$ENV_FILE" up -d --build
+    $COMPOSE --env-file "$ENV_FILE" --profile certbot up -d certbot
   fi
 
   start_optional_workers
@@ -166,7 +171,7 @@ cmd_backup() {
 
 cmd_renew_cert() {
   load_env
-  $COMPOSE --env-file "$ENV_FILE" --profile certbot run --rm certbot renew --webroot -w /var/www/certbot
+  $COMPOSE --env-file "$ENV_FILE" --profile certbot run --rm --entrypoint certbot certbot renew --webroot -w /var/www/certbot
   $COMPOSE --env-file "$ENV_FILE" exec nginx nginx -s reload
 }
 
