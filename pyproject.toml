@@ -67,15 +67,27 @@ pythonpath = ["."]
 markers = [
     "live: tests that require live API keys",
     "postgres: tests requiring PostgreSQL with pgvector",
+    "feature: business-flow feature tests",
+    "e2e: end-to-end production-like tests",
+    "failure: failure-mode and recovery tests",
 ]
 
 [tool.coverage.run]
 source = ["src/voxforge"]
 branch = true
+omit = [
+    "*/infrastructure/livekit/worker.py",
+    "*/infrastructure/knowledge/worker.py",
+]
 
 [tool.coverage.report]
 show_missing = true
 skip_empty = true
+fail_under = 70
+precision = 1
+
+[tool.coverage.html]
+directory = "htmlcov"
 
 [tool.ruff]
 target-version = "py312"

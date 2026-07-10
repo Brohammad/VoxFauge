@@ -1,7 +1,25 @@
-.PHONY: test lint benchmark-onboarding benchmark-knowledge-base livekit-worker deploy-validate
+.PHONY: test test-unit test-integration test-feature test-failure test-e2e test-cov lint benchmark-onboarding benchmark-knowledge-base livekit-worker deploy-validate
 
 test:
 	pytest -v --tb=short
+
+test-unit:
+	pytest tests/unit -v --tb=short
+
+test-integration:
+	pytest tests/integration -v --tb=short
+
+test-feature:
+	pytest tests/feature -v --tb=short -m feature
+
+test-failure:
+	pytest tests/failure -v --tb=short -m failure
+
+test-e2e:
+	pytest tests/e2e -v --tb=short -m e2e
+
+test-cov:
+	python scripts/generate_coverage_report.py --fail-under=70
 
 lint:
 	ruff check src tests
