@@ -35,7 +35,7 @@
 - [x] Issue + PR templates
 - [ ] GitHub Discussions enabled
 - [ ] Repository topics set
-- [ ] GitHub Release `v1.0.0-rc.1` (tag pushed; create release on GitHub)
+- [x] GitHub Release `v1.0.0-rc.1` (tag pushed; create release on GitHub)
 - [ ] Good first issues filed
 
 ## Documentation
