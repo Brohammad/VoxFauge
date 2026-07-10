@@ -135,6 +135,7 @@ bootstrap_tls() {
   touch "$ROOT/deploy/nginx/certs-ready"
   render_nginx_config
   $COMPOSE --env-file "$ENV_FILE" up -d nginx
+  $COMPOSE --env-file "$ENV_FILE" restart nginx
   $COMPOSE --env-file "$ENV_FILE" --profile certbot up -d certbot
   start_optional_workers
   log "TLS bootstrap complete."
