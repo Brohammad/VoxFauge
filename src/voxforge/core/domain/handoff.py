@@ -103,6 +103,7 @@ class HandoffRecord(BaseModel):
     confidence_score: float | None = None
     conversation_summary: str | None = None
     replay_url: str | None = None
+    replay_token: str | None = None
     assigned_to_user_id: UUID | None = None
     assigned_to_email: str | None = None
     assigned_at: datetime | None = None

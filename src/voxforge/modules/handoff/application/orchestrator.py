@@ -21,9 +21,12 @@ from voxforge.core.interfaces.support import TicketingProvider
 from voxforge.infrastructure.db.handoff_repository import HandoffRepository
 from voxforge.infrastructure.observability.logging import get_logger
 from voxforge.infrastructure.observability.metrics import (
+    duplicate_suppressed_total,
+    handoff_completed_total,
     handoff_duration_seconds,
     handoff_initiated_total,
     handoff_queue_depth,
+    handoff_resume_total,
 )
 from voxforge.infrastructure.observability.telemetry import get_tracer
 from voxforge.infrastructure.providers.handoff.factory import create_assignment_provider
@@ -33,6 +36,16 @@ from voxforge.modules.session_manager.application.service import SessionManager
 
 logger = get_logger(__name__)
 _tracer = get_tracer(__name__)
+
+_ACCEPTABLE_FOR_ACCEPT = frozenset({HandoffStatus.PENDING.value, HandoffStatus.ASSIGNED.value})
+_ACCEPTABLE_FOR_COMPLETE = frozenset(
+    {
+        HandoffStatus.PENDING.value,
+        HandoffStatus.ASSIGNED.value,
+        HandoffStatus.ACTIVE.value,
+    }
+)
+_TERMINAL_HANDOFF = frozenset({HandoffStatus.COMPLETED.value, HandoffStatus.CANCELLED.value})
 
 
 class HandoffOrchestrator:
@@ -71,26 +84,32 @@ class HandoffOrchestrator:
 
             existing = await self._repo.get_by_session(session_id, org_id=org_id)
             if existing is not None:
+                duplicate_suppressed_total.labels(resource="handoff").inc()
                 return self._to_package(existing, policy)
 
             start = time.monotonic()
-            record = await self._repo.create_handoff(
+            record, created = await self._repo.create_handoff(
                 org_id=org_id,
                 session_id=session_id,
                 trigger=trigger,
                 trigger_reason=reason,
                 confidence_score=confidence_score,
             )
+            if not created:
+                duplicate_suppressed_total.labels(resource="handoff").inc()
+                return self._to_package(record, policy)
+
             handoff_initiated_total.labels(trigger=trigger.value, org_id=str(org_id)).inc()
 
-            ticket_id = None
-            if policy.auto_create_ticket:
+            replay_url, replay_token = self._replay_links.generate(
+                session_id=session_id, org_id=org_id, handoff_id=record.id
+            )
+
+            ticket_id = record.ticket_id
+            if policy.auto_create_ticket and not ticket_id:
                 ticket_start = time.monotonic()
                 summary_preview = await self._summarizer.summarize(
                     session_id=session_id, org_id=org_id
-                )
-                replay_url, _ = self._replay_links.generate(
-                    session_id=session_id, org_id=org_id, handoff_id=record.id
                 )
                 ticket = await self._ticketing.create_ticket(
                     TicketCreateRequest(
@@ -129,9 +148,6 @@ class HandoffOrchestrator:
             )
 
             replay_start = time.monotonic()
-            replay_url, replay_token = self._replay_links.generate(
-                session_id=session_id, org_id=org_id, handoff_id=record.id
-            )
             handoff_duration_seconds.labels(stage="replay").observe(time.monotonic() - replay_start)
             await self._repo.record_event(
                 record.id,
@@ -146,9 +162,7 @@ class HandoffOrchestrator:
                 handoff_id=record.id,
                 strategy=policy.assignment_strategy,
             )
-            handoff_duration_seconds.labels(stage="assign").observe(
-                time.monotonic() - assign_start
-            )
+            handoff_duration_seconds.labels(stage="assign").observe(time.monotonic() - assign_start)
             await self._repo.record_event(
                 record.id,
                 org_id=org_id,
@@ -198,7 +212,9 @@ class HandoffOrchestrator:
                 replay_token=replay_token,
                 assigned_to_user_id=assignment.assignee_user_id,
                 assigned_to_email=assignment.assignee_email,
-                assigned_at=now if assignment.assignee_user_id or assignment.assignee_email else None,
+                assigned_at=now
+                if assignment.assignee_user_id or assignment.assignee_email
+                else None,
             )
             await self._repo.link_session(
                 session_id=session_id,
@@ -241,14 +257,34 @@ class HandoffOrchestrator:
         if record is None:
             raise ValueError("Handoff not found")
 
+        if record.status == HandoffStatus.ACTIVE:
+            if record.assigned_to_user_id == user_id:
+                duplicate_suppressed_total.labels(resource="handoff_accept").inc()
+                return record
+            raise ValueError("Handoff already accepted by another agent")
+        if record.status.value in _TERMINAL_HANDOFF:
+            raise ValueError(f"Handoff is {record.status.value}")
+
         now = datetime.now(UTC)
-        record = await self._repo.update_status(
+        updated = await self._repo.update_status(
             handoff_id,
             org_id=org_id,
             status=HandoffStatus.ACTIVE.value,
+            allowed_from=_ACCEPTABLE_FOR_ACCEPT,
             assigned_to_user_id=user_id,
             accepted_at=now,
         )
+        if updated is None:
+            record = await self._repo.get_handoff(handoff_id, org_id=org_id)
+            if record is None:
+                raise ValueError("Handoff not found")
+            if record.status == HandoffStatus.ACTIVE and record.assigned_to_user_id == user_id:
+                duplicate_suppressed_total.labels(resource="handoff_accept").inc()
+                return record
+            if record.status.value in _TERMINAL_HANDOFF:
+                raise ValueError(f"Handoff is {record.status.value}")
+            raise ValueError("Handoff already accepted by another agent")
+        record = updated
         await self._repo.link_session(
             session_id=record.session_id,
             handoff_id=handoff_id,
@@ -261,7 +297,12 @@ class HandoffOrchestrator:
             payload={"user_id": str(user_id)},
         )
         await self._sessions.apply_handoff_active(record.session_id, handoff_id=handoff_id)
-        await self._sessions.resume_session(record.session_id)
+        try:
+            await self._sessions.resume_session(record.session_id)
+            handoff_resume_total.labels(status="success").inc()
+        except Exception:
+            handoff_resume_total.labels(status="error").inc()
+            raise
         await self._repo.record_event(
             handoff_id,
             org_id=org_id,
@@ -281,14 +322,32 @@ class HandoffOrchestrator:
         if record is None:
             raise ValueError("Handoff not found")
 
+        if record.status == HandoffStatus.COMPLETED:
+            duplicate_suppressed_total.labels(resource="handoff_complete").inc()
+            handoff_completed_total.labels(status=HandoffStatus.COMPLETED.value).inc()
+            return record
+        if record.status == HandoffStatus.CANCELLED:
+            raise ValueError("Handoff is cancelled")
+
         now = datetime.now(UTC)
-        record = await self._repo.update_status(
+        updated = await self._repo.update_status(
             handoff_id,
             org_id=org_id,
             status=HandoffStatus.COMPLETED.value,
+            allowed_from=_ACCEPTABLE_FOR_COMPLETE,
             completed_at=now,
             metadata={**record.metadata, "resolution": resolution},
         )
+        if updated is None:
+            record = await self._repo.get_handoff(handoff_id, org_id=org_id)
+            if record is None:
+                raise ValueError("Handoff not found")
+            if record.status == HandoffStatus.COMPLETED:
+                duplicate_suppressed_total.labels(resource="handoff_complete").inc()
+                return record
+            raise ValueError(f"Handoff is {record.status.value}")
+        record = updated
+        handoff_completed_total.labels(status=HandoffStatus.COMPLETED.value).inc()
         await self._repo.link_session(
             session_id=record.session_id,
             handoff_id=handoff_id,
@@ -309,9 +368,7 @@ class HandoffOrchestrator:
         policy: EscalationPolicy,
         assignment: HandoffAssignment | None = None,
     ) -> HandoffPackage:
-        if assignment is None and (
-            record.assigned_to_user_id or record.assigned_to_email
-        ):
+        if assignment is None and (record.assigned_to_user_id or record.assigned_to_email):
             assignment = HandoffAssignment(
                 handoff_id=record.id,
                 assignee_user_id=record.assigned_to_user_id,

@@ -421,9 +421,7 @@ class AgentConfigVersionModel(Base):
 
 class KnowledgeCollectionModel(Base):
     __tablename__ = "knowledge_collections"
-    __table_args__ = (
-        UniqueConstraint("org_id", "name", name="uq_knowledge_collections_org_name"),
-    )
+    __table_args__ = (UniqueConstraint("org_id", "name", name="uq_knowledge_collections_org_name"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     org_id: Mapped[uuid.UUID] = mapped_column(
@@ -491,6 +489,13 @@ class KnowledgeDocumentVersionModel(Base):
 
 class KnowledgeChunkModel(Base):
     __tablename__ = "knowledge_chunks"
+    __table_args__ = (
+        UniqueConstraint(
+            "document_version_id",
+            "chunk_index",
+            name="uq_knowledge_chunks_version_index",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     org_id: Mapped[uuid.UUID] = mapped_column(
@@ -593,6 +598,7 @@ class HandoffEventModel(Base):
 
 class ConversationSnapshotModel(Base):
     __tablename__ = "conversation_snapshots"
+    __table_args__ = (UniqueConstraint("handoff_id", name="uq_conversation_snapshots_handoff"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     handoff_id: Mapped[uuid.UUID] = mapped_column(

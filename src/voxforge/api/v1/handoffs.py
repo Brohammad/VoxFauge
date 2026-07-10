@@ -8,17 +8,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from voxforge.api.dependencies import get_handoff_orchestrator, require_scope
+from voxforge.api.dependencies import get_handoff_orchestrator, get_session_manager, require_scope
 from voxforge.core.domain.auth import Principal
-from voxforge.core.domain.handoff import HandoffStatus, HandoffTrigger
+from voxforge.core.domain.handoff import HandoffEventType, HandoffStatus, HandoffTrigger
 from voxforge.infrastructure.db.handoff_repository import HandoffRepository
 from voxforge.infrastructure.db.session import get_db_session
+from voxforge.infrastructure.observability.metrics import (
+    duplicate_suppressed_total,
+    handoff_completed_total,
+)
 from voxforge.modules.handoff.application.orchestrator import HandoffOrchestrator
-from voxforge.modules.handoff.application.policy_loader import load_escalation_policy
 from voxforge.modules.session_manager.application.service import SessionManager
-from voxforge.api.dependencies import get_session_manager
-from voxforge.config import get_settings
-from voxforge.core.exceptions import SessionNotFoundError
 
 router = APIRouter(prefix="/handoffs", tags=["handoffs"])
 
@@ -151,7 +151,9 @@ async def accept_handoff(
         )
         await db.commit()
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        detail = str(exc)
+        status_code = 409 if "already" in detail.lower() or " is " in detail.lower() else 404
+        raise HTTPException(status_code=status_code, detail=detail) from exc
     return _to_response(record)
 
 
@@ -171,8 +173,15 @@ async def complete_handoff(
         )
         await db.commit()
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        detail = str(exc)
+        status_code = 409 if "already" in detail.lower() or "is " in detail.lower() else 404
+        raise HTTPException(status_code=status_code, detail=detail) from exc
     return _to_response(record)
+
+
+_CANCELABLE = frozenset(
+    {HandoffStatus.PENDING.value, HandoffStatus.ASSIGNED.value, HandoffStatus.ACTIVE.value}
+)
 
 
 @router.post("/{handoff_id}/cancel", response_model=HandoffResponse)
@@ -187,19 +196,40 @@ async def cancel_handoff(
     if record is None:
         raise HTTPException(status_code=404, detail="Handoff not found")
 
-    from voxforge.core.domain.handoff import HandoffEventType
+    if record.status == HandoffStatus.CANCELLED:
+        duplicate_suppressed_total.labels(resource="handoff_cancel").inc()
+        return _to_response(record)
+    if record.status == HandoffStatus.COMPLETED:
+        raise HTTPException(status_code=409, detail="Handoff is completed")
 
-    record = await repo.update_status(
+    updated = await repo.update_status(
         handoff_id,
         org_id=principal.org_id,
         status=HandoffStatus.CANCELLED.value,
+        allowed_from=_CANCELABLE,
     )
+    if updated is None:
+        record = await repo.get_handoff(handoff_id, org_id=principal.org_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="Handoff not found")
+        if record.status == HandoffStatus.CANCELLED:
+            duplicate_suppressed_total.labels(resource="handoff_cancel").inc()
+            return _to_response(record)
+        raise HTTPException(status_code=409, detail=f"Handoff is {record.status.value}")
+
+    record = updated
     await repo.record_event(
         handoff_id,
         org_id=principal.org_id,
         event_type=HandoffEventType.CANCELLED.value,
         payload={},
     )
+    await repo.link_session(
+        session_id=record.session_id,
+        handoff_id=handoff_id,
+        handoff_status=HandoffStatus.CANCELLED.value,
+    )
     await session_manager.clear_handoff(record.session_id)
+    handoff_completed_total.labels(status=HandoffStatus.CANCELLED.value).inc()
     await db.commit()
     return _to_response(record)

@@ -4,6 +4,7 @@ from uuid import UUID
 from voxforge.infrastructure.observability.metrics import (
     outcome_records_total,
     outcome_resolution_seconds,
+    outcome_updates_total,
 )
 
 
@@ -17,7 +18,7 @@ class OutcomeStore(Protocol):
         task_success: bool,
         escalation: bool,
         resolution_time_seconds: float,
-    ): ...
+    ) -> tuple[object, bool]: ...
 
 
 class OutcomeExtractionService:
@@ -51,7 +52,7 @@ class OutcomeExtractionService:
         )
         effective_resolution_seconds = max(resolution_time_seconds or 0.0, 0.0)
 
-        await self._repository.upsert_session_outcome(
+        _, created = await self._repository.upsert_session_outcome(
             org_id=org_id,
             session_id=session_id,
             intent=intent,
@@ -59,11 +60,14 @@ class OutcomeExtractionService:
             escalation=escalation,
             resolution_time_seconds=effective_resolution_seconds,
         )
-        outcome_records_total.labels(
-            intent=intent,
-            task_success=str(task_success).lower(),
-            escalation=str(escalation).lower(),
-        ).inc()
+        if created:
+            outcome_records_total.labels(
+                intent=intent,
+                task_success=str(task_success).lower(),
+                escalation=str(escalation).lower(),
+            ).inc()
+        else:
+            outcome_updates_total.labels(intent=intent).inc()
         outcome_resolution_seconds.observe(effective_resolution_seconds)
 
     @staticmethod

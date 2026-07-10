@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select, text, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voxforge.core.domain.knowledge import (
@@ -32,6 +33,13 @@ from voxforge.infrastructure.db.models import (
     KnowledgeIngestJobModel,
 )
 from voxforge.infrastructure.knowledge.util import sha256_text
+from voxforge.infrastructure.observability.logging import get_logger
+from voxforge.infrastructure.observability.metrics import (
+    duplicate_suppressed_total,
+    integrity_violations_total,
+)
+
+logger = get_logger(__name__)
 
 
 def _pgvector_literal(embedding: list[float]) -> str:
@@ -180,8 +188,30 @@ class KnowledgeRepository:
             metadata_=metadata or {},
             created_at=datetime.now(UTC),
         )
-        self._session.add(model)
-        await self._session.flush()
+        try:
+            async with self._session.begin_nested():
+                self._session.add(model)
+                await self._session.flush()
+        except IntegrityError:
+            integrity_violations_total.labels(
+                resource="knowledge_version", operation="create"
+            ).inc()
+            duplicate_suppressed_total.labels(resource="knowledge_version").inc()
+            logger.info(
+                "knowledge_version_duplicate_suppressed",
+                document_id=str(document_id),
+                version_number=version_number,
+            )
+            result = await self._session.execute(
+                select(KnowledgeDocumentVersionModel).where(
+                    KnowledgeDocumentVersionModel.document_id == document_id,
+                    KnowledgeDocumentVersionModel.version_number == version_number,
+                )
+            )
+            existing = result.scalar_one_or_none()
+            if existing is None:
+                raise
+            return self._to_version(existing)
         return self._to_version(model)
 
     async def set_active_version(
@@ -293,16 +323,24 @@ class KnowledgeRepository:
                 embedding=embedding,
                 created_at=datetime.now(UTC),
             )
-            self._session.add(model)
-            await self._session.flush()
-            if dialect == "postgresql" and embedding:
-                await self._session.execute(
-                    text(
-                        "UPDATE knowledge_chunks SET embedding_vec = CAST(:vec AS vector) "
-                        "WHERE id = :id"
-                    ),
-                    {"vec": _pgvector_literal(embedding), "id": str(chunk_id)},
-                )
+            try:
+                async with self._session.begin_nested():
+                    self._session.add(model)
+                    await self._session.flush()
+                    if dialect == "postgresql" and embedding:
+                        await self._session.execute(
+                            text(
+                                "UPDATE knowledge_chunks SET embedding_vec = CAST(:vec AS vector) "
+                                "WHERE id = :id"
+                            ),
+                            {"vec": _pgvector_literal(embedding), "id": str(chunk_id)},
+                        )
+            except IntegrityError:
+                integrity_violations_total.labels(
+                    resource="knowledge_chunk", operation="insert"
+                ).inc()
+                duplicate_suppressed_total.labels(resource="knowledge_chunk").inc()
+                continue
             count += 1
         return count
 
@@ -466,9 +504,7 @@ class KnowledgeRepository:
         )
         return [self._to_job(m) for m in result.scalars().all()]
 
-    async def _active_version_ids(
-        self, org_id: UUID, collection_id: UUID | None
-    ) -> list[UUID]:
+    async def _active_version_ids(self, org_id: UUID, collection_id: UUID | None) -> list[UUID]:
         stmt = select(KnowledgeDocumentModel.active_version_id).where(
             KnowledgeDocumentModel.org_id == org_id,
             KnowledgeDocumentModel.status == DocumentStatus.READY.value,

@@ -10,7 +10,6 @@ from voxforge.core.domain.support import (
     SupportTicket,
     TicketCreateRequest,
 )
-from voxforge.core.interfaces.support import KnowledgeBaseProvider, TicketingProvider
 
 _MOCK_ARTICLES: list[KnowledgeArticle] = [
     KnowledgeArticle(
@@ -112,6 +111,7 @@ class MockTicketingProvider:
     def __init__(self) -> None:
         self._tickets = dict(_MOCK_TICKETS)
         self._counter = 1003
+        self._session_tickets: dict[str, str] = {}
 
     async def lookup_ticket(self, ticket_id: str) -> SupportTicket | None:
         return self._tickets.get(ticket_id.strip().upper())
@@ -127,6 +127,16 @@ class MockTicketingProvider:
         return matches[:limit]
 
     async def create_ticket(self, request: TicketCreateRequest) -> SupportTicket:
+        from voxforge.infrastructure.observability.metrics import duplicate_suppressed_total
+
+        if request.session_id:
+            existing_id = self._session_tickets.get(request.session_id.strip())
+            if existing_id:
+                existing = self._tickets.get(existing_id)
+                if existing is not None:
+                    duplicate_suppressed_total.labels(resource="ticket").inc()
+                    return existing
+
         ticket_id = f"TKT-{self._counter}"
         self._counter += 1
         now = datetime.now(UTC)
@@ -141,4 +151,6 @@ class MockTicketingProvider:
             updated_at=now,
         )
         self._tickets[ticket_id] = ticket
+        if request.session_id:
+            self._session_tickets[request.session_id.strip()] = ticket_id
         return ticket
