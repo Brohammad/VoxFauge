@@ -64,7 +64,9 @@ class SessionRepository:
         model = await self._session.get(VoiceSessionModel, session_id)
         if model is None:
             raise SessionNotFoundError(str(session_id))
-        model.status = status
+        if model.status in (SessionStatus.COMPLETED.value, SessionStatus.FAILED.value):
+            return self._to_entity(model)
+        model.status = status.value
         model.ended_at = datetime.now(UTC)
         await self._session.flush()
         await self._session.refresh(model)
