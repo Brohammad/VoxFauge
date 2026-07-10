@@ -95,7 +95,11 @@ def test_registry_includes_support_tools():
 async def test_tool_router_executes_support_tool():
     settings = Settings(tools_enabled=True, support_tools_enabled=True)
     router = ToolRouter(create_tool_registry(settings), settings)
-    result = await router.execute("ticket_lookup", {"ticket_id": "TKT-1002"})
+    result = await router.execute(
+        "ticket_lookup",
+        {"ticket_id": "TKT-1002"},
+        caller_scopes=["sessions:read"],
+    )
     assert result.status == ToolCallStatus.SUCCESS
     assert "TKT-1002" in result.output
 
