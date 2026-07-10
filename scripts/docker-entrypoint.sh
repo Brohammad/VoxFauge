@@ -11,7 +11,11 @@ alembic upgrade head
 
 if [ "${DEMO_ENABLED:-false}" = "true" ]; then
   echo "Synchronizing demo account..."
-  python /app/scripts/ensure_demo_account.py
+  if [ -f /app/scripts/ensure_demo_account.py ]; then
+    python /app/scripts/ensure_demo_account.py
+  else
+    echo "Demo account sync skipped (script not found)"
+  fi
 fi
 
 echo "Starting VoxForge API..."
