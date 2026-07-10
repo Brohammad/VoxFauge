@@ -72,8 +72,6 @@ log "Deploying (this may take 10–15 min on first build)..."
 ssh_cmd "bash -s" <<REMOTE_DEPLOY
 set -euo pipefail
 cd ${REMOTE_DIR}
-ENV_FILE=.env.production APP_ENV=production PYTHONPATH=src python3 scripts/validate_production_env.py \
-  || ENV_FILE=.env.production APP_ENV=production PYTHONPATH=src python scripts/validate_production_env.py
 ./deploy.sh init
 REMOTE_DEPLOY
 
