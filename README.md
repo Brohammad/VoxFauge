@@ -1,6 +1,7 @@
 # VoxForge
 
-[![CI](https://github.com/Brohammad/VoxForge/actions/workflows/ci.yml/badge.svg)](https://github.com/Brohammad/VoxForge/actions/workflows/ci.yml)
+[![CI](https://github.com/Brohammad/VoxFauge/actions/workflows/ci.yml/badge.svg)](https://github.com/Brohammad/VoxFauge/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Brohammad/VoxFauge?include_prereleases&label=release)](https://github.com/Brohammad/VoxFauge/releases/tag/v1.0.0-rc.1)
 [![Live Demo](https://img.shields.io/badge/demo-live-38d996)](https://voxforge.brohammad.tech/demo)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![Coverage](https://img.shields.io/badge/coverage-81%25-brightgreen)](docs/testing/coverage-report.md)
@@ -10,9 +11,11 @@
 
 🌐 **Live:** [voxforge.brohammad.tech](https://voxforge.brohammad.tech) · [Demo](https://voxforge.brohammad.tech/demo) · [Dashboard](https://voxforge.brohammad.tech/dashboard) · [API](https://voxforge.brohammad.tech/api/v1/docs)
 
-![Demo call completed in 36ms](docs/assets/screenshots/demo-results.png)
+![VoxForge demo — voice pipeline in action](docs/assets/screenshots/demo.gif)
 
 Open-source platform for enterprise voice agents: one pipeline for WebSocket, programmatic onboarding, and LiveKit WebRTC — with knowledge RAG, MCP tools, evaluation, replay, and human handoff.
+
+> **v1.0.0-rc.1 shipped** — HTTPS verified, smoke tests green, [release notes](docs/release/v1.0.0-rc.1.md).
 
 ## Why VoxForge
 
@@ -28,8 +31,8 @@ Open-source platform for enterprise voice agents: one pipeline for WebSocket, pr
 ## Quick start (15 minutes)
 
 ```bash
-git clone https://github.com/Brohammad/VoxForge.git
-cd VoxForge
+git clone https://github.com/Brohammad/VoxFauge.git
+cd VoxFauge
 cp .env.example .env
 uv sync                    # or: pip install -e ".[dev,livekit]"
 docker compose up -d postgres redis
@@ -53,7 +56,7 @@ Mock providers work out of the box — no API keys. Full path: [docs/ONBOARDING.
 ./deploy.sh init
 ```
 
-See [deployment guide](docs/deployment/guide.md) · [runbook](docs/operations/runbook.md) · [public deployment record](docs/deployment/public-deployment-record.md)
+See [deployment guide](docs/deployment/guide.md) · [runbook](docs/operations/runbook.md) · [public deployment](docs/deployment/public-deployment-record.md)
 
 ## Architecture
 

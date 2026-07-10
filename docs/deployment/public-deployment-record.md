@@ -2,7 +2,7 @@
 
 **URL:** https://voxforge.brohammad.tech  
 **Status:** Live (RC-1 baseline)  
-**Last verified:** 2026-07-10
+**Last verified:** 2026-07-10 (v1.0.0-rc.1 redeploy)
 
 ## Infrastructure
 
@@ -38,7 +38,7 @@ curl -fsS https://voxforge.brohammad.tech/api/v1/ready
 
 ```bash
 ssh root@<DROPLET_IP>
-cd /opt/VoxForge
+cd /opt/VoxFauge   # or /opt/VoxForge depending on clone path
 git pull origin main
 ./deploy.sh up
 ```

@@ -6,16 +6,16 @@
 - [x] HTTPS + HSTS
 - [x] Health `/api/v1/health` → ok
 - [x] Readiness `/api/v1/ready` → ok
-- [ ] Push RC-1 commits to `origin/main`
-- [ ] Redeploy VPS with new landing page + screenshots
-- [ ] Verify Certbot auto-renewal
+- [x] Push RC-1 commits to `origin/main`
+- [x] Redeploy VPS with new landing page + screenshots
+- [x] Verify Certbot auto-renewal (cert valid until 2026-10-08)
 
 ## Public website
 
 - [x] Product landing page (hero, features, architecture, FAQ)
 - [x] Screenshots captured
-- [ ] Demo video recorded (see `docs/demo/recording-checklist.md`)
-- [ ] Demo GIF generated from video
+- [x] Demo GIF generated (`docs/assets/screenshots/demo.gif`)
+- [ ] Demo video recorded (MP4 — optional; see `docs/demo/recording-checklist.md`)
 - [x] GitHub, docs, API links
 
 ## Quality gates
@@ -35,7 +35,7 @@
 - [x] Issue + PR templates
 - [ ] GitHub Discussions enabled
 - [ ] Repository topics set
-- [ ] GitHub Release `v1.0.0-rc.1`
+- [ ] GitHub Release `v1.0.0-rc.1` (tag pushed; create release on GitHub)
 - [ ] Good first issues filed
 
 ## Documentation
