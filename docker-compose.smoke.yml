@@ -1,0 +1,5 @@
+# Smoke-test overlay — publish app port for local prod validation (no nginx/TLS).
+services:
+  app:
+    ports:
+      - "127.0.0.1:8000:8000"

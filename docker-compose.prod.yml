@@ -82,6 +82,12 @@ services:
         "--workers",
         "1",
       ]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/v1/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
     deploy:
       resources:
         limits:
@@ -107,7 +113,7 @@ services:
       APP_ENV: production
     depends_on:
       app:
-        condition: service_started
+        condition: service_healthy
     command: ["python", "-m", "voxforge.infrastructure.livekit.worker"]
     deploy:
       resources:
@@ -138,7 +144,7 @@ services:
       redis:
         condition: service_healthy
       app:
-        condition: service_started
+        condition: service_healthy
     command: ["python", "-m", "voxforge.infrastructure.knowledge.worker"]
     deploy:
       resources:
@@ -159,7 +165,7 @@ services:
       - ./infra/prometheus/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
     depends_on:
       app:
-        condition: service_started
+        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -211,7 +217,7 @@ services:
       - certbot_certs:/etc/letsencrypt:ro
     depends_on:
       app:
-        condition: service_started
+        condition: service_healthy
     deploy:
       resources:
         limits:

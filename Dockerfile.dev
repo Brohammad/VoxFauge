@@ -1,4 +1,4 @@
-# Local development image (alias). Prefer: docker compose build (uses Dockerfile.dev).
+# Local development image — hot reload, dev dependencies, mock-friendly defaults.
 FROM python:3.12-slim
 
 WORKDIR /app

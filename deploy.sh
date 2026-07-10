@@ -185,6 +185,10 @@ cmd_renew_cert() {
   $COMPOSE --env-file "$ENV_FILE" exec nginx nginx -s reload
 }
 
+cmd_smoke() {
+  ENV_FILE="$ENV_FILE" "$ROOT/scripts/validate-prod-smoke.sh"
+}
+
 cmd_status() {
   load_env
   log "Compose services:"
@@ -207,9 +211,10 @@ case "${1:-}" in
   logs)        cmd_logs ;;
   backup)      cmd_backup ;;
   renew-cert)  cmd_renew_cert ;;
+  smoke)       cmd_smoke ;;
   status)      cmd_status ;;
   *)
-    echo "Usage: $0 {init|up|down|logs|backup|renew-cert|status}"
+    echo "Usage: $0 {init|up|down|logs|backup|renew-cert|smoke|status}"
     exit 1
     ;;
 esac
