@@ -59,7 +59,7 @@ python scripts/benchmark_knowledge_base.py --iterations 20 --json
 
 ## Baseline (2026-07-10) — partial
 
-**Status:** Citation assembly only. Ingest/search pending implementation.
+**Status:** Full benchmark active (upload, index, search, retrieval, citation).
 
 **Environment**
 
@@ -67,27 +67,29 @@ python scripts/benchmark_knowledge_base.py --iterations 20 --json
 |-------|-------|
 | Machine | Apple Silicon Mac (arm64) |
 | OS | macOS 26.5 |
-| Python | 3.12+ |
-| Embedder | N/A (citation-only benchmark) |
+| Python | 3.14 |
+| Embedder | Mock (hash-seeded unit vectors) |
+| Database | SQLite in-memory (CI-compatible) |
 
-### Citation assembly (100 iterations)
+### Throughput and latency (5 measured iterations, 1 warmup)
 
-| Metric | Mean (ms) | p50 (ms) | p95 (ms) |
-|--------|-----------|----------|----------|
-| Citation + snippet format | 0.005 | 0.003 | 0.018 |
+| Metric | Mean | p50 | p95 |
+|--------|------|-----|-----|
+| Upload throughput (docs/s) | 177 | 204 | — |
+| Search latency (ms) | 4.3 | 4.3 | 4.5 |
+| Retrieval latency (ms) | 3.9 | 3.9 | 4.1 |
+| Citation assembly (ms) | 0.009 | 0.004 | 0.03 |
 
 Run `make benchmark-knowledge-base-json` to refresh after environment changes.
 
-**Interpretation:** Citation assembly is pure Python — expected sub-millisecond p50.
-Dominant search latency will be pgvector query + embedding API in production.
+**Interpretation:** With mock embedder, search and retrieval are dominated by in-process Python + SQLite. Production latency will include Postgres pgvector and embedding API time.
 
 ## Current limitations
 
-1. **Scaffold only** — ingest and search benchmarks activate in Phase 2–3.
-2. **Mock embedder** — does not measure OpenAI embedding API latency.
-3. **Synthetic corpus** — real PDF complexity (tables, images) not represented.
-4. **Single worker** — no concurrent ingest load testing.
-5. **No OCR** — scanned PDFs excluded from v1 benchmarks.
+1. **Mock embedder** — does not measure OpenAI embedding API latency.
+2. **Synthetic corpus** — real PDF complexity (tables, images) not represented.
+3. **Single worker** — no concurrent ingest load testing.
+4. **No OCR** — scanned PDFs excluded from v1 benchmarks.
 
 ## Comparison workflow
 
