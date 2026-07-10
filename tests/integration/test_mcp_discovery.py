@@ -35,7 +35,9 @@ class StubDiscovery:
 
 
 @pytest.fixture
-def mcp_registry_override():
+def mcp_registry_override(monkeypatch):
+    monkeypatch.setenv("TOOLS_ENABLED", "true")
+    get_settings.cache_clear()
     config = Settings(
         tools_enabled=True,
         mcp_servers_config=json.dumps(
