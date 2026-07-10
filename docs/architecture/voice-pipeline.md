@@ -120,4 +120,4 @@ sequenceDiagram
 ## LiveKit/WebRTC
 
 LiveKit is implemented as a transport adapter into the same `VoicePipelineService`.
-See [livekit-integration.md](./livekit-integration.md) for lifecycle, failure modes, and worker operations.
+See [livekit-integration.md](./livekit-integration.md) for lifecycle and worker operations. See [failure-recovery.md](./failure-recovery.md) for cross-cutting failure modes and recovery behavior.

@@ -106,20 +106,68 @@ Never commit `.env.production` to version control.
 
 ## Observability
 
-- Structured JSON logs via structlog
-- Prometheus metrics at `/api/v1/metrics` (blocked at NGINX in production)
+- Structured JSON logs via structlog (`request_id`, `session_id`, `org_id`, `trace_id`)
+- Prometheus metrics at `/api/v1/metrics` — protected in production; see [observability.md](../architecture/observability.md)
+- Rate limit metrics: `voxforge_rate_limit_blocked_total`, `voxforge_rate_limit_redis_errors_total` — see [rate-limiting.md](../architecture/rate-limiting.md)
 - OpenTelemetry export via `OTEL_EXPORTER_OTLP_ENDPOINT` (optional)
+- Health: `/api/v1/health` (liveness), `/api/v1/ready` (readiness with dependency matrix)
 
-For metrics access in production, use SSH tunnel:
+### Metrics access in production
+
+Configure one of:
+
+1. `METRICS_BEARER_TOKEN` — pass as `Authorization: Bearer <token>` from Prometheus
+2. `METRICS_ALLOWED_IPS` — allow internal scrape network (e.g. `10.0.0.0/8`)
+3. API key with `metrics:read` scope
+
+NGINX blocks public `/api/v1/metrics`. For ad-hoc access, SSH tunnel:
 
 ```bash
-ssh -L 9090:localhost:8000 user@vps
-curl localhost:9090/api/v1/metrics
+ssh -L 8000:localhost:8000 user@vps
+curl -H "Authorization: Bearer $METRICS_BEARER_TOKEN" localhost:8000/api/v1/metrics
 ```
+
+### Common alerts
+
+| Signal | Threshold | Action |
+|--------|-----------|--------|
+| `/ready` returns 503 | Any | Check Postgres and Redis — see [failure-recovery.md](../architecture/failure-recovery.md) |
+| `voxforge_provider_errors_total` rate &gt; 0 sustained | 5 min | Check STT/LLM/TTS provider status and API keys |
+| `voxforge_rate_limit_redis_errors_total` increasing | 1 min | Redis outage affecting rate limits — see rate-limiting doc |
+| `voxforge_e2e_turn_latency_seconds` p50 &gt; 3s | 10 min | Check provider latency; review active session count |
+| `voxforge_handoff_queue_depth` &gt; 5 per org | 5 min | Staff handoff queue; check assignment provider |
+| `voxforge_session_consistency_total{outcome="compensated"}` spike | 5 min | Redis/Postgres partial failures during session create |
+
+### Degraded mode
+
+When `/ready` returns `status: degraded` (HTTP 200):
+
+| Failed check | Impact |
+|--------------|--------|
+| `knowledge_worker` | Ingest jobs queue but do not process |
+| `mcp_registry` | MCP tools unavailable; built-in tools still work |
+| `livekit` | LiveKit transport unavailable if credentials missing |
+| `embedding_provider` / `llm_provider` | Knowledge search / voice may fail if real providers configured without keys |
+
+Core API, auth, and WebSocket voice (with mock providers) continue when only non-critical checks fail.
+
+### Expected throughput
+
+Single-node compose profile: ~50 concurrent WebSocket sessions (untested ceiling). Uvicorn runs `--workers 1`. Increase only after load testing.
+
+### Recovery procedures
+
+1. **Redis down:** Restart Redis container → verify `/ready` → clients retry failed sessions
+2. **Postgres down:** Restore database → `alembic upgrade head` → verify `/ready` → inspect stuck `active` sessions
+3. **Provider errors:** Rotate API keys in `.env.production`, restart app
+4. **Metrics scrape failing:** Verify `METRICS_BEARER_TOKEN` matches Prometheus config
+5. **Knowledge ingest stalled:** Check `knowledge_worker` heartbeat in `/ready`; restart worker container
+
+Full scenario matrix: [failure-recovery.md](../architecture/failure-recovery.md).
 
 ## Incident response
 
 1. Check `./deploy.sh status`
 2. Review `app` logs for errors
-3. Verify `/api/v1/ready` — isolates DB vs Redis failures
+3. Verify `/api/v1/ready` — isolates DB vs Redis failures ([failure-recovery.md](../architecture/failure-recovery.md))
 4. See [troubleshooting.md](troubleshooting.md)
