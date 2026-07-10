@@ -60,6 +60,9 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev,livekit]"
 
+      - name: Prepare production env for deploy regression tests
+        run: cp .env.production.example .env.production
+
       - name: Lint
         run: ruff check src tests
 
