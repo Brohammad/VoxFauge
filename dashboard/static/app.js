@@ -198,7 +198,10 @@ async function loginWithPassword() {
     throw new Error(parseApiError(res.status, body));
   }
   const data = JSON.parse(body);
-  token = data.tokens.access_token;
+  token = data.access_token || data.tokens?.access_token;
+  if (!token) {
+    throw new Error("Login succeeded but no access token was returned.");
+  }
   orgId = null;
   els.tokenInput.value = token;
   localStorage.setItem("voxforge_token", token);
