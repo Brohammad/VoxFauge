@@ -69,7 +69,7 @@ print(pub[0] if pub else '')
     echo "  SSH: ssh root@$ip"
     echo ""
     echo "Next: add Cloudflare A record voxforge.brohammad.tech → $ip (DNS only)"
-    echo "Then: ssh root@$ip 'git clone https://github.com/Brohammad/VoxFauge.git /opt/VoxForge && cd /opt/VoxForge && ./scripts/bootstrap-server.sh'"
+    echo "Then: ssh root@$ip 'git clone https://github.com/Brohammad/VoxForge.git /opt/VoxForge && cd /opt/VoxForge && ./scripts/bootstrap-server.sh'"
     exit 0
   fi
   sleep 5

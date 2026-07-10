@@ -1,10 +1,9 @@
 """Unit tests for memory conversation summarizer."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
-from voxforge.core.domain.entities import MessageRole
 from voxforge.modules.memory.application.summarizer import Summarizer
 
 

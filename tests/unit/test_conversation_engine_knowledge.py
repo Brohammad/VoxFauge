@@ -1,5 +1,4 @@
 from collections.abc import AsyncIterator
-from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest

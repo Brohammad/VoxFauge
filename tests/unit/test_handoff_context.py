@@ -11,7 +11,6 @@ from voxforge.core.domain.evaluation import (
     EvaluationStatus,
     MetricName,
 )
-from voxforge.core.domain.handoff import ConfidenceSignals
 from voxforge.modules.handoff.application.context import build_turn_handoff_context
 
 

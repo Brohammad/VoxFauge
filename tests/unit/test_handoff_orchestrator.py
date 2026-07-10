@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 
+from tests.conftest import TEST_ORG_ID
 from voxforge.config import get_settings
 from voxforge.core.domain.handoff import (
     EscalationPolicy,
@@ -19,8 +20,6 @@ from voxforge.modules.handoff.application.orchestrator import HandoffOrchestrato
 from voxforge.modules.handoff.application.replay_link import ReplayLinkService
 from voxforge.modules.handoff.application.summarizer import ExtractiveConversationSummarizer
 from voxforge.modules.session_manager.application.service import SessionManager
-
-from tests.conftest import TEST_ORG_ID
 
 
 @pytest.fixture

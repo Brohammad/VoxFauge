@@ -79,7 +79,9 @@ async def test_build_context_returns_empty_when_no_results(builder):
 @pytest.mark.asyncio
 async def test_enrich_messages_injects_before_conversation_tail(builder):
     builder._search.search.return_value = KnowledgeSearchResponse(query="pto", results=[], total=0)
-    builder.build_context = AsyncMock(return_value="Relevant knowledge base excerpts:\n- [Handbook]")
+    builder.build_context = AsyncMock(
+        return_value="Relevant knowledge base excerpts:\n- [Handbook]"
+    )
 
     messages = [
         ChatMessageLike(role=MessageRole.SYSTEM, content="You are helpful."),

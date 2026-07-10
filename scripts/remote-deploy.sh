@@ -19,7 +19,7 @@ if [[ -f "$ROOT/.env.deploy" ]]; then
 fi
 
 DROPLET_IP="${DROPLET_IP:-}"
-REPO_URL="${REPO_URL:-https://github.com/Brohammad/VoxFauge.git}"
+REPO_URL="${REPO_URL:-https://github.com/Brohammad/VoxForge.git}"
 SSH_USER="${SSH_USER:-root}"
 REMOTE_DIR="${REMOTE_DIR:-/opt/VoxForge}"
 
