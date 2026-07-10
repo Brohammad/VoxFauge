@@ -5,5 +5,8 @@ global:
 scrape_configs:
   - job_name: voxforge
     metrics_path: /api/v1/metrics
+    # In production set authorization.credentials to METRICS_BEARER_TOKEN
+    # authorization:
+    #   credentials: <METRICS_BEARER_TOKEN>
     static_configs:
       - targets: ["app:8000"]

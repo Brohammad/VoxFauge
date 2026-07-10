@@ -1,10 +1,11 @@
-from fastapi import APIRouter
-from fastapi.responses import PlainTextResponse
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse, PlainTextResponse
 from prometheus_client import generate_latest
-from sqlalchemy import text
 
-from voxforge.infrastructure.db.session import get_engine
-from voxforge.infrastructure.redis.client import get_redis
+from voxforge.config import Settings, get_settings
+from voxforge.infrastructure.observability.health import run_readiness_checks
+from voxforge.infrastructure.observability.metrics_auth import require_metrics_access
+from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
 
 router = APIRouter(tags=["health"])
 
@@ -15,30 +16,19 @@ async def health() -> dict[str, str]:
 
 
 @router.get("/ready")
-async def ready() -> dict[str, str]:
-    checks: dict[str, str] = {}
-
-    try:
-        engine = get_engine()
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-        checks["database"] = "ok"
-    except Exception as exc:
-        checks["database"] = f"error: {exc}"
-
-    try:
-        redis = get_redis()
-        await redis.ping()
-        checks["redis"] = "ok"
-    except Exception as exc:
-        checks["redis"] = f"error: {exc}"
-
-    all_ok = all(v == "ok" for v in checks.values())
-    return {"status": "ok" if all_ok else "degraded", **checks}
+async def ready(
+    request: Request,
+    settings: Settings = Depends(get_settings),
+) -> JSONResponse:
+    mcp_registry: MCPRuntimeRegistry | None = getattr(request.app.state, "mcp_registry", None)
+    report = await run_readiness_checks(settings, mcp_registry=mcp_registry)
+    return JSONResponse(content=report.to_dict(), status_code=report.http_status)
 
 
 @router.get("/metrics")
-async def metrics() -> PlainTextResponse:
+async def metrics(
+    _: None = Depends(require_metrics_access),
+) -> PlainTextResponse:
     return PlainTextResponse(
         content=generate_latest(),
         media_type="text/plain; version=0.0.4; charset=utf-8",

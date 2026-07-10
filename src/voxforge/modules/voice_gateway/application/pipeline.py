@@ -19,6 +19,7 @@ from voxforge.infrastructure.observability.metrics import (
     turns_completed,
     turns_interrupted,
 )
+from voxforge.infrastructure.observability.provider_errors import record_provider_error
 from voxforge.infrastructure.observability.telemetry import get_tracer
 from voxforge.infrastructure.providers.tts.cartesia import token_stream_to_sentences
 from voxforge.modules.session_manager.application.service import SessionManager
@@ -100,36 +101,42 @@ class VoicePipelineService:
         final_transcript: str | None = None
         final_confidence: float | None = None
 
-        try:
-            async for event in self._stt.transcribe_stream(audio_stream(), language=language):
-                if self._interrupt_event and self._interrupt_event.is_set():
-                    break
+        with _tracer.start_as_current_span("voice_pipeline.run_listening") as span:
+            span.set_attribute("voxforge.session_id", str(session_id))
+            try:
+                async for event in self._stt.transcribe_stream(audio_stream(), language=language):
+                    if self._interrupt_event and self._interrupt_event.is_set():
+                        break
 
-                if event.is_partial:
-                    if first_partial_time is None:
-                        first_partial_time = time.monotonic()
-                        stt_latency_seconds.observe(first_partial_time - turn_start)
-                    await self._maybe_await(callbacks.on_transcript(event))
-                else:
-                    final_transcript = event.text
-                    final_confidence = event.confidence
-                    await self._maybe_await(callbacks.on_transcript(event))
+                    if event.is_partial:
+                        if first_partial_time is None:
+                            first_partial_time = time.monotonic()
+                            stt_latency_seconds.observe(first_partial_time - turn_start)
+                        await self._maybe_await(callbacks.on_transcript(event))
+                    else:
+                        final_transcript = event.text
+                        final_confidence = event.confidence
+                        await self._maybe_await(callbacks.on_transcript(event))
 
-            if final_transcript:
-                await self._process_turn(
-                    session_id,
-                    final_transcript,
-                    callbacks,
-                    turn_start=turn_start,
-                    stt_ms=(first_partial_time - turn_start) * 1000 if first_partial_time else None,
-                    confidence=final_confidence,
-                )
-        except asyncio.CancelledError:
-            logger.info("pipeline_listening_cancelled", session_id=str(session_id))
-            raise
-        except Exception as exc:
-            logger.error("pipeline_listening_error", session_id=str(session_id), error=str(exc))
-            await self._maybe_await(callbacks.on_error("pipeline_error", str(exc)))
+                if final_transcript:
+                    await self._process_turn(
+                        session_id,
+                        final_transcript,
+                        callbacks,
+                        turn_start=turn_start,
+                        stt_ms=(first_partial_time - turn_start) * 1000
+                        if first_partial_time
+                        else None,
+                        confidence=final_confidence,
+                    )
+            except asyncio.CancelledError:
+                logger.info("pipeline_listening_cancelled", session_id=str(session_id))
+                raise
+            except Exception as exc:
+                span.record_exception(exc)
+                record_provider_error(self._settings.stt_provider, "transcribe_stream")
+                logger.error("pipeline_listening_error", session_id=str(session_id), error=str(exc))
+                await self._maybe_await(callbacks.on_error("pipeline_error", str(exc)))
 
     async def run_text_turn(
         self,
@@ -263,6 +270,7 @@ class VoicePipelineService:
                         e2e_turn_latency_seconds.observe(first_audio_time - turn_start)
                     await self._maybe_await(callbacks.on_audio(chunk))
         except Exception as exc:
+            record_provider_error(self._settings.tts_provider, "synthesize_stream")
             logger.error("pipeline_tts_error", session_id=str(session_id), error=str(exc))
             await self._maybe_await(callbacks.on_error("tts_error", str(exc)))
 
@@ -356,9 +364,9 @@ class VoicePipelineService:
             decision = self._handoff_policy.evaluate(handoff_ctx, policy)
             if decision.should_escalate and decision.trigger is not None:
                 if decision.confidence is not None:
-                    handoff_confidence_at_escalation.labels(
-                        trigger=decision.trigger.value
-                    ).observe(decision.confidence)
+                    handoff_confidence_at_escalation.labels(trigger=decision.trigger.value).observe(
+                        decision.confidence
+                    )
                 package = await self._handoff.initiate_handoff(
                     org_id=org_id,
                     session_id=session_id,

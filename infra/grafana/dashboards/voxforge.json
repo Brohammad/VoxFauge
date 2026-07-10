@@ -3,7 +3,7 @@
   "uid": "voxforge-main",
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "10s",
   "panels": [
     {
@@ -40,10 +40,13 @@
     },
     {
       "type": "timeseries",
-      "title": "Evaluation Score",
+      "title": "Provider Errors",
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
       "targets": [
-        {"expr": "histogram_quantile(0.5, rate(voxforge_evaluation_score_bucket[5m]))", "legendFormat": "p50 score"}
+        {
+          "expr": "sum(rate(voxforge_provider_errors_total[5m])) by (provider, operation)",
+          "legendFormat": "{{provider}}/{{operation}}"
+        }
       ]
     },
     {
@@ -52,6 +55,69 @@
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
       "targets": [
         {"expr": "sum(rate(voxforge_tool_calls_total[5m])) by (tool_name)", "legendFormat": "{{tool_name}}"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Rate Limit Blocks",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "targets": [
+        {
+          "expr": "sum(rate(voxforge_rate_limit_blocked_total[5m])) by (category)",
+          "legendFormat": "{{category}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Handoff Queue Depth",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+      "targets": [
+        {"expr": "sum(voxforge_handoff_queue_depth) by (org_id)", "legendFormat": "{{org_id}}"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Session Consistency Operations",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+      "targets": [
+        {
+          "expr": "sum(rate(voxforge_session_consistency_total[5m])) by (operation, outcome)",
+          "legendFormat": "{{operation}}/{{outcome}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Knowledge Ingest Jobs",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
+      "targets": [
+        {
+          "expr": "sum(rate(voxforge_knowledge_ingest_jobs_total[5m])) by (status)",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "LiveKit Room Lifecycle",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+      "targets": [
+        {
+          "expr": "sum(rate(voxforge_livekit_room_lifecycle_total[5m])) by (event)",
+          "legendFormat": "{{event}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Evaluation Score (p50)",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 36},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, rate(voxforge_evaluation_score_bucket[5m]))",
+          "legendFormat": "p50 score"
+        }
       ]
     }
   ]

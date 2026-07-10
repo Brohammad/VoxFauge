@@ -3,6 +3,11 @@ import sys
 
 import structlog
 
+from voxforge.infrastructure.observability.sanitization import (
+    inject_trace_context,
+    sanitize_log_event,
+)
+
 
 def setup_logging(log_level: str = "INFO") -> None:
     logging.basicConfig(
@@ -15,6 +20,8 @@ def setup_logging(log_level: str = "INFO") -> None:
             structlog.contextvars.merge_contextvars,
             structlog.processors.add_log_level,
             structlog.processors.TimeStamper(fmt="iso"),
+            inject_trace_context,
+            sanitize_log_event,
             structlog.processors.JSONRenderer(),
         ],
         wrapper_class=structlog.make_filtering_bound_logger(

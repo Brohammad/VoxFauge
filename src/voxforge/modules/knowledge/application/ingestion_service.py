@@ -19,15 +19,23 @@ from voxforge.core.interfaces.memory import EmbeddingProvider
 from voxforge.infrastructure.db.knowledge_repository import KnowledgeRepository
 from voxforge.infrastructure.knowledge.chunking import get_chunker
 from voxforge.infrastructure.knowledge.parsers import get_parser
-from voxforge.infrastructure.knowledge.util import detect_source_type, normalize_text, sha256_text
+from voxforge.infrastructure.knowledge.util import (
+    detect_source_type,
+    normalize_text,
+    safe_upload_filename,
+    sha256_text,
+)
 from voxforge.infrastructure.observability.logging import get_logger
 from voxforge.infrastructure.observability.metrics import (
+    knowledge_chunks_indexed_total,
     knowledge_ingest_duration_seconds,
     knowledge_ingest_jobs_total,
 )
+from voxforge.infrastructure.observability.telemetry import get_tracer
 from voxforge.modules.knowledge.application.citation import compute_chunk_diff, next_version_number
 
 logger = get_logger(__name__)
+_tracer = get_tracer(__name__)
 
 
 class KnowledgeIngestionService:
@@ -57,6 +65,11 @@ class KnowledgeIngestionService:
         collection = await self._repo.get_collection(collection_id, org_id=org_id)
         if collection is None:
             raise ValueError("Collection not found")
+
+        filename = safe_upload_filename(filename)
+        if len(content) > self._settings.knowledge_max_upload_bytes:
+            max_bytes = self._settings.knowledge_max_upload_bytes
+            raise ValueError(f"File exceeds maximum upload size of {max_bytes} bytes")
 
         source_type = SourceType(detect_source_type(filename, content_type))
         parser = get_parser(source_type)
@@ -117,6 +130,11 @@ class KnowledgeIngestionService:
         return job
 
     async def process_job(self, job_id: UUID) -> None:
+        with _tracer.start_as_current_span("knowledge.ingest") as span:
+            span.set_attribute("voxforge.knowledge.job_id", str(job_id))
+            await self._process_job_inner(job_id)
+
+    async def _process_job_inner(self, job_id: UUID) -> None:
         start = time.monotonic()
         job = await self._repo.get_job_by_id(job_id)
         if job is None:
@@ -193,6 +211,8 @@ class KnowledgeIngestionService:
                 document_version_id=version_id,
                 chunks=pairs,
             )
+            if indexed:
+                knowledge_chunks_indexed_total.inc(indexed)
             await self._repo.update_version_chunk_count(version_id, indexed)
             await self._repo.set_active_version(document_id, org_id=org_id, version_id=version_id)
             await self._repo.update_document_status(

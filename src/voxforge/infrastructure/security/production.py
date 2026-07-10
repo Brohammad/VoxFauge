@@ -49,6 +49,23 @@ def collect_production_errors(settings: Settings) -> list[str]:
     if settings.trusted_hosts.strip() in ("", "*"):
         errors.append("TRUSTED_HOSTS must list your public domain(s) in production")
 
+    if not settings.auth_required:
+        errors.append("AUTH_REQUIRED must be true in production")
+
+    if settings.handoff_enabled and _is_insecure_secret(
+        settings.handoff_replay_signing_secret or settings.jwt_secret_key
+    ):
+        errors.append(
+            "HANDOFF_REPLAY_SIGNING_SECRET must be set to a strong unique value "
+            "when handoff is enabled"
+        )
+
+    if settings.metrics_allow_anonymous_effective:
+        errors.append(
+            "METRICS_ALLOW_ANONYMOUS must be false in production "
+            "(set METRICS_BEARER_TOKEN or use IP allow-list)"
+        )
+
     return errors
 
 

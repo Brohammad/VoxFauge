@@ -55,6 +55,7 @@ ROLE_SCOPES: dict[OrgRole, list[str]] = {
         "handoffs:read",
         "handoffs:write",
         "handoffs:assign",
+        "metrics:read",
     ],
     OrgRole.ADMIN: [
         "sessions:read",
@@ -72,6 +73,7 @@ ROLE_SCOPES: dict[OrgRole, list[str]] = {
         "handoffs:read",
         "handoffs:write",
         "handoffs:assign",
+        "metrics:read",
     ],
     OrgRole.MEMBER: [
         "sessions:read",
@@ -82,6 +84,24 @@ ROLE_SCOPES: dict[OrgRole, list[str]] = {
         "handoffs:write",
     ],
 }
+
+ALL_API_KEY_SCOPES: frozenset[str] = frozenset(
+    scope for scopes in ROLE_SCOPES.values() for scope in scopes
+)
+
+
+def effective_scopes(principal: Principal) -> list[str]:
+    if principal.scopes:
+        return list(principal.scopes)
+    if principal.role:
+        return list(ROLE_SCOPES[principal.role])
+    return []
+
+
+def principal_has_scopes(principal: Principal, required: list[str]) -> bool:
+    if not required:
+        return True
+    return all(principal.has_scope(scope) for scope in required)
 
 
 class User(BaseModel):

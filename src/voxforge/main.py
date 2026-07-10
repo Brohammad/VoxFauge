@@ -13,6 +13,7 @@ from voxforge.api.ws.voice import router as ws_router
 from voxforge.config import get_settings
 from voxforge.infrastructure.db.session import close_db, init_db
 from voxforge.infrastructure.http.rate_limit import RateLimitMiddleware
+from voxforge.infrastructure.http.request_context import RequestContextMiddleware
 from voxforge.infrastructure.observability.logging import setup_logging
 from voxforge.infrastructure.observability.telemetry import setup_telemetry
 from voxforge.infrastructure.redis.client import close_redis, init_redis
@@ -70,6 +71,7 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
     app.add_middleware(RateLimitMiddleware, settings=settings)
+    app.add_middleware(RequestContextMiddleware)
 
     app.include_router(api_v1_router, prefix="/api/v1")
     app.include_router(ws_router)
