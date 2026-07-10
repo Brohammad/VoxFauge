@@ -7,6 +7,7 @@ from voxforge.api.v1.dashboard import router as dashboard_router
 from voxforge.api.v1.demo import router as demo_router
 from voxforge.api.v1.evaluations import router as evaluations_router
 from voxforge.api.v1.health import router as health_router
+from voxforge.api.v1.knowledge import router as knowledge_router
 from voxforge.api.v1.livekit import router as livekit_router
 from voxforge.api.v1.memory import router as memory_router
 from voxforge.api.v1.onboarding import router as onboarding_router
@@ -27,6 +28,7 @@ api_v1_router.include_router(replay_router)
 api_v1_router.include_router(sso_router)
 api_v1_router.include_router(livekit_router)
 api_v1_router.include_router(memory_router)
+api_v1_router.include_router(knowledge_router)
 api_v1_router.include_router(onboarding_router)
 api_v1_router.include_router(templates_router)
 api_v1_router.include_router(agent_configs_router)

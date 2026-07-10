@@ -7,6 +7,7 @@ from voxforge.infrastructure.providers.support.freshdesk import (
     FreshdeskKnowledgeBaseProvider,
     FreshdeskTicketingProvider,
 )
+from voxforge.infrastructure.providers.support.internal import InternalKnowledgeBaseProvider
 from voxforge.infrastructure.providers.support.mock import (
     MockKnowledgeBaseProvider,
     MockTicketingProvider,
@@ -21,6 +22,12 @@ def create_knowledge_base_provider(settings: Settings) -> KnowledgeBaseProvider:
     provider = settings.knowledge_base_provider.lower()
     if provider == "mock":
         return MockKnowledgeBaseProvider()
+    if provider == "internal":
+        if not settings.knowledge_enabled:
+            return MockKnowledgeBaseProvider()
+        from voxforge.infrastructure.db.session import get_session_factory
+
+        return InternalKnowledgeBaseProvider(get_session_factory(), settings)
     if provider == "zendesk":
         return ZendeskKnowledgeBaseProvider(
             settings.zendesk_subdomain,

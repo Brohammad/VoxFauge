@@ -407,3 +407,121 @@ class AgentConfigVersionModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
+
+
+class KnowledgeCollectionModel(Base):
+    __tablename__ = "knowledge_collections"
+    __table_args__ = (
+        UniqueConstraint("org_id", "name", name="uq_knowledge_collections_org_name"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    embedding_dimensions: Mapped[int] = mapped_column(nullable=False, default=1536)
+    chunking_config: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+
+
+class KnowledgeDocumentModel(Base):
+    __tablename__ = "knowledge_documents"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    collection_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("knowledge_collections.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    source_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    active_version_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
+class KnowledgeDocumentVersionModel(Base):
+    __tablename__ = "knowledge_document_versions"
+    __table_args__ = (
+        UniqueConstraint(
+            "document_id", "version_number", name="uq_knowledge_document_versions_doc_ver"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("knowledge_documents.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    version_number: Mapped[int] = mapped_column(nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    blob_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    chunk_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+
+
+class KnowledgeChunkModel(Base):
+    __tablename__ = "knowledge_chunks"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    document_version_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("knowledge_document_versions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    chunk_index: Mapped[int] = mapped_column(nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    token_count: Mapped[int | None] = mapped_column(nullable=True)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    embedding: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+
+
+class KnowledgeIngestJobModel(Base):
+    __tablename__ = "knowledge_ingest_jobs"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("knowledge_documents.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    document_version_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    job_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
+    progress_pct: Mapped[int] = mapped_column(nullable=False, default=0)
+    stage: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )

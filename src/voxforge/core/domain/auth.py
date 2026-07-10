@@ -49,6 +49,9 @@ ROLE_SCOPES: dict[OrgRole, list[str]] = {
         "api_keys:write",
         "api_keys:delete",
         "ws:connect",
+        "knowledge:read",
+        "knowledge:write",
+        "knowledge:delete",
     ],
     OrgRole.ADMIN: [
         "sessions:read",
@@ -60,11 +63,15 @@ ROLE_SCOPES: dict[OrgRole, list[str]] = {
         "api_keys:write",
         "api_keys:delete",
         "ws:connect",
+        "knowledge:read",
+        "knowledge:write",
+        "knowledge:delete",
     ],
     OrgRole.MEMBER: [
         "sessions:read",
         "sessions:write",
         "ws:connect",
+        "knowledge:read",
     ],
 }
 

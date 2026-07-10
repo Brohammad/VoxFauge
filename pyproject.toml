@@ -35,6 +35,7 @@ dependencies = [
     "langchain-openai>=0.3.0",
     "signxml>=4.0.0",
     "lxml>=5.0.0",
+    "pypdf>=5.0.0",
 ]
 
 [project.optional-dependencies]
@@ -85,3 +86,4 @@ ignore = ["B008"]
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/*.py" = ["E402"]
+"src/voxforge/infrastructure/knowledge/worker.py" = ["E402"]

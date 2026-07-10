@@ -26,3 +26,6 @@ benchmark-knowledge-base:
 
 benchmark-knowledge-base-json:
 	python scripts/benchmark_knowledge_base.py --iterations 100 --json
+
+knowledge-worker:
+	python -m voxforge.infrastructure.knowledge.worker

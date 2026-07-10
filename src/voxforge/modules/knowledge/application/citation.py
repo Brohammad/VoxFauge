@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from voxforge.core.domain.knowledge import (
-    ChunkMetadata,
     Citation,
     KnowledgeChunk,
     KnowledgeDocument,

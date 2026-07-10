@@ -11,6 +11,7 @@ from voxforge.infrastructure.observability.metrics import (
     tool_latency_seconds,
 )
 from voxforge.infrastructure.observability.telemetry import get_tracer
+from voxforge.infrastructure.tools.tool_context import tool_org_id, tool_session_id
 from voxforge.modules.mcp_tool_router.application.registry import ToolRegistry
 
 logger = get_logger(__name__)
@@ -55,6 +56,8 @@ class ToolRouter:
 
         with _tracer.start_as_current_span("tool.router.execute") as span:
             span.set_attribute("voxforge.tool.name", tool_name)
+            org_token = tool_org_id.set(org_id) if org_id is not None else None
+            session_token = tool_session_id.set(session_id) if session_id is not None else None
             if org_id is not None:
                 span.set_attribute("voxforge.org.id", str(org_id))
             if session_id is not None:
@@ -85,6 +88,11 @@ class ToolRouter:
                 status = ToolCallStatus.ERROR
                 error = str(exc)
                 logger.error("tool_execution_error", tool=tool_name, error=error)
+            finally:
+                if org_token is not None:
+                    tool_org_id.reset(org_token)
+                if session_token is not None:
+                    tool_session_id.reset(session_token)
 
             span.set_attribute("voxforge.tool.status", status.value)
 

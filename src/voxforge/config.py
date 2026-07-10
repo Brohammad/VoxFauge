@@ -86,7 +86,18 @@ class Settings(BaseSettings):
 
     tools_enabled: bool = True
     support_tools_enabled: bool = True
-    knowledge_base_provider: str = "mock"  # mock | zendesk | freshdesk
+    knowledge_enabled: bool = True
+    knowledge_base_provider: str = "mock"  # mock | internal | zendesk | freshdesk
+    knowledge_blob_store: str = "filesystem"
+    knowledge_blob_path: str = "/tmp/voxforge-knowledge"
+    knowledge_worker_enabled: bool = False
+    knowledge_worker_poll_interval_sec: int = 2
+    knowledge_default_chunk_size: int = 512
+    knowledge_default_chunk_overlap: int = 64
+    knowledge_search_top_k: int = 5
+    knowledge_search_min_similarity: float = 0.65
+    knowledge_context_enabled: bool = True
+    embedding_provider: str = "mock"  # openai | mock
     ticketing_provider: str = "mock"  # mock | zendesk | freshdesk
     zendesk_subdomain: str = ""
     zendesk_api_token: str = ""

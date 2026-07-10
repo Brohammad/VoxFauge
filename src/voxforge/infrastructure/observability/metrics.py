@@ -138,3 +138,23 @@ regression_alerts_total = Counter(
     "Regression alerts raised by dashboard alert engine",
     ["code", "severity"],
 )
+knowledge_ingest_jobs_total = Counter(
+    "voxforge_knowledge_ingest_jobs_total",
+    "Knowledge base ingest jobs",
+    ["status", "source_type"],
+)
+knowledge_ingest_duration_seconds = Histogram(
+    "voxforge_knowledge_ingest_duration_seconds",
+    "Knowledge ingest duration by stage",
+    ["stage"],
+    buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0),
+)
+knowledge_search_latency_seconds = Histogram(
+    "voxforge_knowledge_search_latency_seconds",
+    "Knowledge semantic search latency",
+    buckets=(0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0),
+)
+knowledge_chunks_indexed_total = Counter(
+    "voxforge_knowledge_chunks_indexed_total",
+    "Knowledge chunks indexed",
+)

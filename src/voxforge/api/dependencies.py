@@ -10,12 +10,14 @@ from voxforge.core.events.bus import EventBus, get_event_bus
 from voxforge.core.exceptions import ForbiddenError, UnauthorizedError
 from voxforge.infrastructure.db.dashboard_repository import DashboardRepository
 from voxforge.infrastructure.db.evaluation_repository import EvaluationRepository
+from voxforge.infrastructure.db.knowledge_repository import KnowledgeRepository
 from voxforge.infrastructure.db.memory_repository import MemoryRepository
 from voxforge.infrastructure.db.outcome_repository import OutcomeRepository
 from voxforge.infrastructure.db.replay_repository import ReplayRepository
 from voxforge.infrastructure.db.session import get_db_session
 from voxforge.infrastructure.db.tool_repository import ToolCallRepository
 from voxforge.infrastructure.livekit.token_service import LiveKitTokenService
+from voxforge.infrastructure.providers.embeddings.factory import create_embedding_provider
 from voxforge.infrastructure.providers.embeddings.openai import OpenAIEmbeddingProvider
 from voxforge.infrastructure.providers.factory import (
     create_llm_provider,
@@ -37,6 +39,9 @@ from voxforge.modules.evaluation.application.service import EvaluationEngine
 from voxforge.infrastructure.tools.registry_factory import create_tool_registry
 from voxforge.modules.mcp_tool_router.application.router import ToolRouter
 from voxforge.modules.memory.application.service import MemoryService
+from voxforge.infrastructure.knowledge.blob import create_blob_store
+from voxforge.modules.knowledge.application.ingestion_service import KnowledgeIngestionService
+from voxforge.modules.knowledge.application.search_service import KnowledgeSearchService
 from voxforge.modules.onboarding.application.service import OnboardingService
 from voxforge.modules.outcomes.application.service import OutcomeExtractionService
 from voxforge.modules.replay.application.service import ReplayService
@@ -142,11 +147,45 @@ def get_memory_service(
     if not settings.memory_enabled:
         return None
     store = MemoryRepository(db)
-    embedder = OpenAIEmbeddingProvider(
-        settings.openai_api_key,
-        model=settings.memory_embedding_model,
-    )
+    embedder = create_embedding_provider(settings)
     return MemoryService(store, embedder, settings, llm)
+
+
+def get_knowledge_repository(
+    db: AsyncSession = Depends(get_db_session),
+) -> KnowledgeRepository:
+    return KnowledgeRepository(db)
+
+
+def get_knowledge_search_service(
+    db: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+) -> KnowledgeSearchService | None:
+    if not settings.knowledge_enabled:
+        return None
+    return KnowledgeSearchService(
+        KnowledgeRepository(db),
+        create_embedding_provider(settings),
+        settings,
+    )
+
+
+def get_knowledge_ingestion_service(
+    db: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+) -> KnowledgeIngestionService | None:
+    if not settings.knowledge_enabled:
+        return None
+    blob = create_blob_store(
+        settings.knowledge_blob_store,
+        path=settings.knowledge_blob_path,
+    )
+    return KnowledgeIngestionService(
+        KnowledgeRepository(db),
+        blob,
+        create_embedding_provider(settings),
+        settings,
+    )
 
 
 def get_mcp_registry(request: Request) -> MCPRuntimeRegistry | None:

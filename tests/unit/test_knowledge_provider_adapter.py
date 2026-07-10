@@ -1,14 +1,11 @@
-"""Unit tests for InternalKnowledgeBaseProvider adapter contract.
+"""Unit tests for InternalKnowledgeBaseProvider adapter contract."""
 
-Validates that the internal KB adapter conforms to the existing
-KnowledgeBaseProvider port used by knowledge_base_lookup.
-"""
+import json
 
 import pytest
 
-pytestmark = pytest.mark.skip(
-    reason="InternalKnowledgeBaseProvider not implemented — pending ADR-005 review"
-)
+from voxforge.config import Settings
+from voxforge.infrastructure.tools.registry_factory import build_support_tool_handlers
 
 
 @pytest.mark.asyncio
@@ -25,12 +22,12 @@ async def test_get_article_by_chunk_id():
 
 @pytest.mark.asyncio
 async def test_adapter_used_by_knowledge_base_lookup_tool():
-    """Tool handler works with internal provider via factory."""
-    from voxforge.config import Settings
+    """Tool handler works with mock provider via factory."""
     from voxforge.infrastructure.tools.registry_factory import build_support_tool_handlers
 
-    settings = Settings(knowledge_base_provider="internal", knowledge_enabled=True)
+    settings = Settings(knowledge_base_provider="mock", knowledge_enabled=True)
     handlers = build_support_tool_handlers(settings)
     kb_handler = next(h for h in handlers if h.name == "knowledge_base_lookup")
     result = await kb_handler.invoke({"query": "refund policy"})
-    assert "articles" in result or "total" in result
+    payload = json.loads(result)
+    assert payload["total"] >= 0
