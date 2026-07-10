@@ -41,7 +41,13 @@ chmod +x deploy.sh scripts/backup_postgres.sh
 
 ## Environment configuration
 
-Copy `.env.production.example` to `.env.production`. Required values:
+Copy `.env.production.example` to `.env.production`. Or generate secrets automatically:
+
+```bash
+./scripts/setup-production-env.sh
+```
+
+Required values (if not using setup script):
 
 | Variable | Description |
 |----------|-------------|
@@ -51,6 +57,8 @@ Copy `.env.production.example` to `.env.production`. Required values:
 | `POSTGRES_PASSWORD` | Strong database password |
 | `JWT_SECRET_KEY` | `openssl rand -hex 32` |
 | `API_KEY_HASH_PEPPER` | `openssl rand -hex 32` |
+| `METRICS_BEARER_TOKEN` | Enables Prometheus + Grafana stack |
+| `HANDOFF_REPLAY_SIGNING_SECRET` | Replay token signing (handoff) |
 
 For the public demo without paid API keys, keep:
 
@@ -77,11 +85,21 @@ LIVEKIT_API_KEY=...
 LIVEKIT_API_SECRET=...
 ```
 
-Start the worker:
+`./deploy.sh init` starts `livekit-worker` automatically when `LIVEKIT_URL` is set.
+
+## Monitoring (optional)
+
+Set `METRICS_BEARER_TOKEN` in `.env.production`. Deploy starts Prometheus (internal) and Grafana on `127.0.0.1:3000` (SSH tunnel). See [digitalocean.md](digitalocean.md).
+
+## Server bootstrap
+
+On a fresh Ubuntu 24.04 VPS:
 
 ```bash
-docker compose -f docker-compose.prod.yml --profile livekit up -d livekit-worker
+./scripts/bootstrap-server.sh
 ```
+
+**Student hosting:** [oracle-cloud.md](oracle-cloud.md) (free permanent) or [digitalocean.md](digitalocean.md) if credits remain. Azure ($100) works the same way with an Ubuntu VM.
 
 ## Operations
 

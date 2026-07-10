@@ -120,6 +120,84 @@ services:
         max-size: "20m"
         max-file: "3"
 
+  knowledge-worker:
+    profiles: ["knowledge"]
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-voxforge}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-voxforge}
+      REDIS_URL: redis://redis:6379/0
+      APP_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_started
+    command: ["python", "-m", "voxforge.infrastructure.knowledge.worker"]
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  prometheus:
+    profiles: ["monitoring"]
+    image: prom/prometheus:v2.54.1
+    restart: unless-stopped
+    volumes:
+      - ./infra/prometheus/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      app:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  grafana:
+    profiles: ["monitoring"]
+    image: grafana/grafana:11.2.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-voxforge}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s:%(http_port)s/"
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/etc/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped

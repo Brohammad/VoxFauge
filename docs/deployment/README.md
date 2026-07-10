@@ -3,6 +3,8 @@
 | Document | Description |
 |----------|-------------|
 | [guide.md](./guide.md) | Step-by-step VPS deployment |
+| [oracle-cloud.md](./oracle-cloud.md) | **Recommended** — Oracle Always Free ($0, permanent) |
+| [digitalocean.md](./digitalocean.md) | DigitalOcean Droplet (if you still have credits) |
 | [architecture.md](./architecture.md) | Production topology and data flow |
 | [operations.md](./operations.md) | Day-2 operations, backups, renewals |
 | [troubleshooting.md](./troubleshooting.md) | Common failures and fixes |

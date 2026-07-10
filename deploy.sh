@@ -63,6 +63,39 @@ render_nginx_config() {
   fi
 }
 
+render_prometheus_config() {
+  load_env
+  local tpl="$ROOT/infra/prometheus/prometheus.prod.yml.template"
+  local out="$ROOT/infra/prometheus/prometheus.prod.yml"
+  [[ -f "$tpl" ]] || return 0
+  [[ -n "${METRICS_BEARER_TOKEN:-}" ]] || return 0
+  log "Rendering Prometheus config..."
+  sed -e "s/\${METRICS_BEARER_TOKEN}/$METRICS_BEARER_TOKEN/g" "$tpl" > "$out"
+}
+
+start_optional_workers() {
+  load_env
+  local profiles=()
+
+  if [[ -n "${LIVEKIT_URL:-}" ]]; then
+    log "Starting LiveKit worker (LIVEKIT_URL set)..."
+    profiles+=(--profile livekit)
+    $COMPOSE --env-file "$ENV_FILE" "${profiles[@]}" up -d livekit-worker
+    profiles=()
+  fi
+
+  if [[ "${KNOWLEDGE_WORKER_ENABLED:-false}" == "true" ]]; then
+    log "Starting knowledge worker (KNOWLEDGE_WORKER_ENABLED=true)..."
+    $COMPOSE --env-file "$ENV_FILE" --profile knowledge up -d knowledge-worker
+  fi
+
+  if [[ -n "${METRICS_BEARER_TOKEN:-}" ]]; then
+    render_prometheus_config
+    log "Starting monitoring stack (METRICS_BEARER_TOKEN set)..."
+    $COMPOSE --env-file "$ENV_FILE" --profile monitoring up -d prometheus grafana
+  fi
+}
+
 bootstrap_tls() {
   load_env
   render_nginx_config
@@ -90,6 +123,7 @@ bootstrap_tls() {
   render_nginx_config
   $COMPOSE --env-file "$ENV_FILE" up -d nginx
   $COMPOSE --env-file "$ENV_FILE" --profile certbot up -d certbot
+  start_optional_workers
   log "TLS bootstrap complete."
 }
 
@@ -105,6 +139,7 @@ cmd_init() {
     $COMPOSE --env-file "$ENV_FILE" up -d --build
   fi
 
+  start_optional_workers
   cmd_status
 }
 
@@ -113,6 +148,7 @@ cmd_up() {
   render_nginx_config
   mkdir -p "$ROOT/deploy/backups"
   $COMPOSE --env-file "$ENV_FILE" up -d --build
+  start_optional_workers
   cmd_status
 }
 

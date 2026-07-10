@@ -22,6 +22,7 @@ Use this checklist before announcing the public URL.
 - [ ] `./deploy.sh status` shows healthy services
 - [ ] `GET /api/v1/health` returns 200
 - [ ] `GET /api/v1/ready` shows database and redis ok
+- [ ] `./scripts/smoke-test.sh` passes (set `BASE_URL`)
 
 ## Public demo
 
@@ -56,8 +57,14 @@ Use this checklist before announcing the public URL.
 
 - [ ] LiveKit Cloud project configured
 - [ ] `LIVEKIT_*` env vars set
-- [ ] `livekit-worker` profile running
+- [ ] `livekit-worker` running (auto-started by `./deploy.sh init` when `LIVEKIT_URL` set)
 - [ ] `/examples/livekit` connects and receives agent audio
+
+## Optional (Monitoring)
+
+- [ ] `METRICS_BEARER_TOKEN` set in `.env.production`
+- [ ] Prometheus + Grafana running (auto-started by deploy)
+- [ ] Grafana accessible via SSH tunnel to `127.0.0.1:3000`
 
 ## Post-launch (next phase — not Phase 5)
 
