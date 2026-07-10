@@ -193,3 +193,53 @@ jobs:
 
       - name: Build production Docker image
         run: docker build -f Dockerfile.prod -t voxforge:ci .
+
+  browser-tests:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: voxforge
+          POSTGRES_PASSWORD: voxforge
+          POSTGRES_DB: voxforge
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev,livekit]"
+
+      - name: Run browser tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://voxforge:voxforge@localhost:5432/voxforge
+          REDIS_URL: redis://localhost:6379/0
+          DEMO_ENABLED: "true"
+          JWT_SECRET_KEY: ci-browser-test-secret-key-32-chars-min
+          API_KEY_HASH_PEPPER: ci-browser-test-pepper-value
+        run: |
+          chmod +x scripts/run_browser_tests.sh
+          ./scripts/run_browser_tests.sh
