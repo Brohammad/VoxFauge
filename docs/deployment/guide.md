@@ -6,7 +6,7 @@ Deploy VoxForge on a single VPS using Docker Compose, NGINX, and Let's Encrypt T
 
 | Requirement | Recommendation |
 |-------------|----------------|
-| Provider | Hetzner CX22 or DigitalOcean Droplet (2 vCPU, 4 GB RAM) |
+| Provider | Hetzner CX22 or DigitalOcean Droplet (1–2 vCPU, 2+ GB RAM) |
 | OS | Ubuntu 24.04 LTS |
 | Domain | A record pointing to VPS public IP |
 | Ports | 80, 443 open inbound |
@@ -69,10 +69,18 @@ LLM_PROVIDER=mock
 TTS_PROVIDER=mock
 ```
 
-Validate before deploy:
+Validate before deploy (runs automatically during `./deploy.sh init` inside the app container):
 
 ```bash
-ENV_FILE=.env.production APP_ENV=production python scripts/validate_production_env.py
+./deploy.sh init
+```
+
+Or validate manually after building the app image:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production build app
+docker compose -f docker-compose.prod.yml --env-file .env.production run --rm --no-deps \
+  -e APP_ENV=production --entrypoint python app /app/scripts/validate_production_env.py
 ```
 
 ## LiveKit (optional)
@@ -137,7 +145,7 @@ Demo credentials: `demo@voxforge.io` / `VoxForgeDemo!` (synced on container star
 
 ## Resource limits
 
-Production compose sets per-service CPU and memory limits. See `docker-compose.prod.yml` for defaults. Adjust based on observed utilization (see [operations.md](operations.md)).
+Production compose sets per-service CPU and memory limits with defaults suitable for **1-vCPU / 2GB** droplets. Override via `COMPOSE_CPU_*` and `COMPOSE_MEM_*` in `.env.production` (see `.env.production.example`). For larger hosts, raise `COMPOSE_CPU_APP` and `COMPOSE_MEM_APP` first.
 
 ## Related docs
 
