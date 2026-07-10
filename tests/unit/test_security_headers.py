@@ -1,11 +1,12 @@
 """Tests for security headers middleware."""
 
-from voxforge.config import Settings
-from voxforge.infrastructure.http.security_headers import SecurityHeadersMiddleware
 from starlette.applications import Starlette
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
+
+from voxforge.config import Settings
+from voxforge.infrastructure.http.security_headers import SecurityHeadersMiddleware
 
 
 async def homepage(_request):
@@ -20,6 +21,7 @@ def test_security_headers_added_in_development():
     response = client.get("/")
     assert response.headers["X-Content-Type-Options"] == "nosniff"
     assert response.headers["X-Frame-Options"] == "DENY"
+    assert "default-src 'self'" in response.headers["Content-Security-Policy"]
     assert "Strict-Transport-Security" not in response.headers
 
 
@@ -30,3 +32,13 @@ def test_security_headers_include_hsts_in_production():
     client = TestClient(app)
     response = client.get("/")
     assert "max-age=31536000" in response.headers["Strict-Transport-Security"]
+
+
+def test_api_csp_is_locked_down():
+    app = Starlette(routes=[Route("/api/v1/health", homepage)])
+    settings = Settings(app_env="development")
+    app.add_middleware(SecurityHeadersMiddleware, settings=settings)
+    client = TestClient(app)
+    response = client.get("/api/v1/health")
+    csp = response.headers["Content-Security-Policy"]
+    assert csp == "default-src 'none'; frame-ancestors 'none'"

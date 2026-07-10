@@ -79,6 +79,15 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(SecurityHeadersMiddleware, settings=settings)
 
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
+    if not getattr(app, "_otel_instrumented", False):
+        FastAPIInstrumentor.instrument_app(
+            app,
+            excluded_urls="/api/v1/health,/api/v1/ready,/api/v1/metrics",
+        )
+        app._otel_instrumented = True  # type: ignore[attr-defined]
+
     app.include_router(api_v1_router, prefix="/api/v1")
     app.include_router(ws_router)
 
