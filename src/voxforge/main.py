@@ -14,10 +14,14 @@ from voxforge.config import get_settings
 from voxforge.infrastructure.db.session import close_db, init_db
 from voxforge.infrastructure.http.rate_limit import RateLimitMiddleware
 from voxforge.infrastructure.http.request_context import RequestContextMiddleware
+from voxforge.infrastructure.http.security_headers import SecurityHeadersMiddleware
 from voxforge.infrastructure.observability.logging import setup_logging
 from voxforge.infrastructure.observability.telemetry import setup_telemetry
 from voxforge.infrastructure.redis.client import close_redis, init_redis
-from voxforge.infrastructure.security.production import validate_production_settings
+from voxforge.infrastructure.security.production import (
+    log_startup_security_warnings,
+    validate_production_settings,
+)
 from voxforge.infrastructure.tools.mcp_runtime_registry import MCPRuntimeRegistry
 from voxforge.infrastructure.tools.registry_factory import register_support_tool_discovery
 
@@ -30,6 +34,7 @@ PUBLIC_DIR = Path(__file__).resolve().parents[2] / "public"
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
     validate_production_settings(settings)
+    log_startup_security_warnings(settings)
     setup_logging(settings.log_level)
     setup_telemetry(settings)
     await init_db(settings.database_url)
@@ -72,6 +77,7 @@ def create_app() -> FastAPI:
         )
     app.add_middleware(RateLimitMiddleware, settings=settings)
     app.add_middleware(RequestContextMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware, settings=settings)
 
     app.include_router(api_v1_router, prefix="/api/v1")
     app.include_router(ws_router)
