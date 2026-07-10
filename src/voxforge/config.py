@@ -157,7 +157,12 @@ class Settings(BaseSettings):
 
     @property
     def trusted_host_list(self) -> list[str]:
-        return [h.strip() for h in self.trusted_hosts.split(",") if h.strip()]
+        hosts = [h.strip() for h in self.trusted_hosts.split(",") if h.strip()]
+        if self.app_env == "production" and hosts and "*" not in hosts:
+            for internal in ("localhost", "127.0.0.1", "app"):
+                if internal not in hosts:
+                    hosts.append(internal)
+        return hosts
 
     @property
     def cors_origin_list(self) -> list[str]:

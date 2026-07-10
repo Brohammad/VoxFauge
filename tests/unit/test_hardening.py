@@ -26,6 +26,19 @@ def test_safe_upload_filename_strips_path_traversal():
     assert safe_upload_filename("") == "document.txt"
 
 
+def test_production_trusted_hosts_include_internal_probes():
+    settings = Settings(
+        app_env="production",
+        trusted_hosts="voxforge.example.com",
+    )
+    assert settings.trusted_host_list == [
+        "voxforge.example.com",
+        "localhost",
+        "127.0.0.1",
+        "app",
+    ]
+
+
 def test_production_rejects_auth_disabled():
     settings = Settings(
         app_env="production",
