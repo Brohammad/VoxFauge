@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+import logging
 from uuid import UUID
 
 from voxforge.config import Settings
 
+logger = logging.getLogger(__name__)
+
 _INSECURE_MARKERS = ("change-me", "changeme", "replace-me", "your-secret")
+_MOCK_PROVIDER_FIELDS = (
+    "stt_provider",
+    "llm_provider",
+    "tts_provider",
+    "embedding_provider",
+)
 
 
 def _is_insecure_secret(value: str) -> bool:
@@ -14,6 +23,14 @@ def _is_insecure_secret(value: str) -> bool:
     if not lowered:
         return True
     return any(marker in lowered for marker in _INSECURE_MARKERS)
+
+
+def _mock_providers_in_use(settings: Settings) -> list[str]:
+    return [
+        name
+        for name in _MOCK_PROVIDER_FIELDS
+        if getattr(settings, name, "").lower() == "mock"
+    ]
 
 
 def collect_production_errors(settings: Settings) -> list[str]:
@@ -46,19 +63,35 @@ def collect_production_errors(settings: Settings) -> list[str]:
     if settings.tts_provider.lower() == "cartesia" and not settings.cartesia_api_key:
         errors.append("CARTESIA_API_KEY is required when TTS_PROVIDER=cartesia")
 
+    if not settings.demo_enabled:
+        mocks = _mock_providers_in_use(settings)
+        if mocks:
+            errors.append(
+                "Mock voice/embedding providers are not allowed in production "
+                f"when DEMO_ENABLED=false: {', '.join(mocks)}"
+            )
+
     if settings.trusted_hosts.strip() in ("", "*"):
         errors.append("TRUSTED_HOSTS must list your public domain(s) in production")
+
+    if not settings.cors_origins.strip():
+        errors.append("CORS_ORIGINS must be set in production for browser clients")
+
+    if not settings.public_base_url.strip():
+        errors.append("PUBLIC_BASE_URL must be set in production")
 
     if not settings.auth_required:
         errors.append("AUTH_REQUIRED must be true in production")
 
-    if settings.handoff_enabled and _is_insecure_secret(
-        settings.handoff_replay_signing_secret or settings.jwt_secret_key
-    ):
-        errors.append(
-            "HANDOFF_REPLAY_SIGNING_SECRET must be set to a strong unique value "
-            "when handoff is enabled"
-        )
+    if settings.handoff_enabled:
+        if not settings.handoff_replay_signing_secret.strip():
+            errors.append(
+                "HANDOFF_REPLAY_SIGNING_SECRET must be set when handoff is enabled"
+            )
+        elif _is_insecure_secret(settings.handoff_replay_signing_secret):
+            errors.append(
+                "HANDOFF_REPLAY_SIGNING_SECRET must be set to a strong unique value"
+            )
 
     if settings.metrics_allow_anonymous_effective:
         errors.append(
@@ -66,7 +99,35 @@ def collect_production_errors(settings: Settings) -> list[str]:
             "(set METRICS_BEARER_TOKEN or use IP allow-list)"
         )
 
+    if settings.mcp_servers_config.strip() and settings.mcp_startup_discover:
+        try:
+            import mcp  # noqa: F401
+        except ImportError:
+            errors.append(
+                "MCP_SERVERS_CONFIG is set but the mcp package is not installed; "
+                "pip install -e '.[mcp]'"
+            )
+
     return errors
+
+
+def log_startup_security_warnings(settings: Settings) -> None:
+    """Emit non-fatal warnings for risky but allowed development configuration."""
+    if settings.app_env == "production":
+        return
+
+    if _is_insecure_secret(settings.jwt_secret_key):
+        logger.warning(
+            "JWT_SECRET_KEY uses a development placeholder; set a strong secret before production"
+        )
+    if not settings.trusted_host_list:
+        logger.warning("TRUSTED_HOSTS is unset; TrustedHostMiddleware is disabled")
+    if not settings.cors_origin_list:
+        logger.warning("CORS_ORIGINS is unset; CORSMiddleware is disabled")
+    if not settings.demo_enabled:
+        logger.info(
+            "DEMO_ENABLED is false; /demo quickstart and /api/v1/demo/* return 404"
+        )
 
 
 def validate_production_settings(settings: Settings) -> None:
