@@ -56,6 +56,11 @@ jobs:
       - name: Lint
         run: ruff check src tests
 
+      - name: Dependency audit
+        run: |
+          pip install pip-audit
+          pip-audit -r <(pip freeze) --desc on --skip-editable
+
       - name: Run database migrations
         env:
           DATABASE_URL: postgresql+asyncpg://voxforge:voxforge@localhost:5432/voxforge
