@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Generate secrets and create .env.production from the example template.
-# Usage: ./scripts/setup-production-env.sh
+# Usage: ./scripts/setup-production-env.sh [your-domain.example]
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$ROOT/.env.production"
 EXAMPLE="$ROOT/.env.production.example"
+DOMAIN="${1:-your-domain.example}"
 
 if [[ -f "$ENV_FILE" ]]; then
   echo "ERROR: $ENV_FILE already exists. Remove it first or edit manually." >&2
@@ -39,6 +40,10 @@ replace POSTGRES_PASSWORD "$POSTGRES_PASSWORD"
 replace JWT_SECRET_KEY "$JWT_SECRET_KEY"
 replace API_KEY_HASH_PEPPER "$API_KEY_HASH_PEPPER"
 replace DATABASE_URL "postgresql+asyncpg://voxforge:${POSTGRES_PASSWORD}@postgres:5432/voxforge"
+replace PUBLIC_BASE_URL "https://${DOMAIN}"
+replace TRUSTED_HOSTS "$DOMAIN"
+replace CORS_ORIGINS "https://${DOMAIN}"
+replace CERTBOT_EMAIL "admin@${DOMAIN}"
 
 # Append optional secrets if not in example yet
 grep -q '^METRICS_BEARER_TOKEN=' "$ENV_FILE" \
