@@ -70,7 +70,7 @@ class SearchRequestBody(BaseModel):
     query: str = Field(min_length=1, max_length=2000)
     collection_id: UUID | None = None
     limit: int = Field(default=5, ge=1, le=20)
-    min_similarity: float = Field(default=0.65, ge=0.0, le=1.0)
+    min_similarity: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class CitationResponse(BaseModel):
@@ -171,6 +171,8 @@ async def upload_document(
         message = str(exc)
         if "maximum upload size" in message:
             raise HTTPException(status_code=413, detail=message) from exc
+        if "Unsupported file type" in message:
+            raise HTTPException(status_code=415, detail=message) from exc
         raise HTTPException(status_code=404, detail=message) from exc
     await db.commit()
     return UploadResponse(document_id=document_id, job_id=job_id, status="queued")

@@ -44,7 +44,7 @@ class KnowledgeSearchService:
             min_similarity = (
                 request.min_similarity
                 if request.min_similarity is not None
-                else self._settings.knowledge_search_min_similarity
+                else self._settings.knowledge_search_min_similarity_effective
             )
             limit = request.limit or self._settings.knowledge_search_top_k
 

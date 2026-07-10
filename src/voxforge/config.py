@@ -178,6 +178,13 @@ class Settings(BaseSettings):
     def metrics_allowed_ip_list(self) -> tuple[str, ...]:
         return tuple(ip.strip() for ip in self.metrics_allowed_ips.split(",") if ip.strip())
 
+    @property
+    def knowledge_search_min_similarity_effective(self) -> float:
+        """Mock embeddings produce low cosine scores; use a permissive threshold."""
+        if self.embedding_provider.lower() == "mock":
+            return 0.0
+        return self.knowledge_search_min_similarity
+
 
 @lru_cache
 def get_settings() -> Settings:

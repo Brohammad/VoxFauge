@@ -178,7 +178,7 @@ class KnowledgeSearchRequest(BaseModel):
     query: str
     collection_id: UUID | None = None
     limit: int = 5
-    min_similarity: float = 0.65
+    min_similarity: float | None = None
 
 
 class KnowledgeSearchResponse(BaseModel):

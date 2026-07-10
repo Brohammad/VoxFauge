@@ -44,4 +44,6 @@ def detect_source_type(filename: str, content_type: str | None = None) -> str:
             return "csv"
         if "markdown" in content_type:
             return "markdown"
-    return "txt"
+        if "text/plain" in content_type:
+            return "txt"
+    raise ValueError(f"Unsupported file type: {filename}")
