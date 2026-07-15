@@ -12,7 +12,7 @@ Get from `git clone` to first voice session in under 15 minutes.
 
 | Minute | Action | Command |
 |--------|--------|---------|
-| 0–2 | Clone | `git clone https://github.com/Brohammad/VoxFauge.git && cd VoxFauge` |
+| 0–2 | Clone | `git clone https://github.com/Brohammad/VoxForge.git && cd VoxForge` |
 | 2–3 | Env | `cp .env.example .env` |
 | 3–5 | Dependencies | `uv sync` or `pip install -e ".[dev,livekit]"` |
 | 5–7 | Database | `docker compose up -d postgres redis && alembic upgrade head` |

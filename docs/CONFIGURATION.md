@@ -26,15 +26,32 @@ Environment variables for local development (`.env`) and production (`.env.produ
 
 | Variable | Default | Options |
 |----------|---------|---------|
-| `STT_PROVIDER` | `mock` | `mock`, `deepgram`, `openai` |
+| `STT_PROVIDER` | `mock` | `mock`, `deepgram` |
 | `LLM_PROVIDER` | `mock` | `mock`, `openai` |
-| `TTS_PROVIDER` | `mock` | `mock`, `openai`, `cartesia`, `elevenlabs` |
+| `TTS_PROVIDER` | `mock` | `mock`, `cartesia` |
 | `EMBEDDING_PROVIDER` | `mock` | `mock`, `openai` |
 | `DEEPGRAM_API_KEY` | — | Required when `STT_PROVIDER=deepgram` |
-| `OPENAI_API_KEY` | — | Required for OpenAI providers |
+| `OPENAI_API_KEY` | — | Required for OpenAI LLM/embeddings |
 | `CARTESIA_API_KEY` | — | Required when `TTS_PROVIDER=cartesia` |
 
 Production with `DEMO_ENABLED=false` requires real providers (not `mock`).
+
+---
+
+## Auth cookies
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AUTH_COOKIES_ENABLED` | `true` | Set HttpOnly cookies on login/register/refresh |
+| `AUTH_COOKIE_NAME` | `voxforge_access` | Access token cookie name |
+| `AUTH_COOKIE_SECURE` | auto | `true` in production when unset |
+| `READY_FAIL_ON_DEGRADED` | `false` | Return HTTP 503 when optional deps are degraded |
+
+Cookie-authenticated mutating requests require `X-CSRF-Token` matching the `voxforge_csrf` cookie (Bearer / API key exempt).
+
+## Org invites
+
+`POST /api/v1/orgs/{org_id}/invites` with `{ "email", "role" }` returns a one-time `token` + `accept_url` (logged when SMTP is not configured). Accept via `POST /api/v1/auth/invites/accept`.
 
 ---
 

@@ -115,7 +115,11 @@ async def voice_websocket(websocket: WebSocket) -> None:
         logger.error("ws_error", session_id=str(session_id), error=str(exc))
         try:
             await websocket.send_json(
-                {"type": "error", "code": "internal_error", "message": str(exc)}
+                {
+                    "type": "error",
+                    "code": "internal_error",
+                    "message": "Internal error",
+                }
             )
         except Exception:
             pass

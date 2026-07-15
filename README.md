@@ -1,7 +1,7 @@
 # VoxForge
 
-[![CI](https://github.com/Brohammad/VoxFauge/actions/workflows/ci.yml/badge.svg)](https://github.com/Brohammad/VoxFauge/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Brohammad/VoxFauge?include_prereleases&label=release)](https://github.com/Brohammad/VoxFauge/releases/tag/v1.0.0-rc.1)
+[![CI](https://github.com/Brohammad/VoxForge/actions/workflows/ci.yml/badge.svg)](https://github.com/Brohammad/VoxForge/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Brohammad/VoxForge?include_prereleases&label=release)](https://github.com/Brohammad/VoxForge/releases/tag/v1.0.0-rc.1)
 [![Live Demo](https://img.shields.io/badge/demo-live-38d996)](https://voxforge.brohammad.tech/demo)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![Coverage](https://img.shields.io/badge/coverage-81%25-brightgreen)](docs/testing/coverage-report.md)
@@ -47,6 +47,8 @@ One `VoicePipelineService` powers every transport — no duplicated business log
 
 Compared to managed platforms (Vapi, Retell) you get **data sovereignty and no per-minute platform tax**. Compared to frameworks (LiveKit Agents, Pipecat, LangGraph alone) you get a **batteries-included product** with auth, dashboard, and deploy scripts.
 
+Minimal curl walkthrough (no LiveKit): [examples/hello-voice](examples/hello-voice/README.md)
+
 [Full competitive benchmark →](docs/benchmarks/competitive-analysis.md)
 
 ---
@@ -65,8 +67,8 @@ Compared to managed platforms (Vapi, Retell) you get **data sovereignty and no p
 **Prerequisites:** Python 3.12+, Docker, [uv](https://docs.astral.sh/uv/) (recommended)
 
 ```bash
-git clone https://github.com/Brohammad/VoxFauge.git
-cd VoxFauge
+git clone https://github.com/Brohammad/VoxForge.git
+cd VoxForge
 cp .env.example .env
 uv sync                    # or: pip install -e ".[dev,livekit]"
 docker compose up -d postgres redis
@@ -182,17 +184,18 @@ Swap providers via environment variables — no code changes:
 
 | Role | Options | Default (local) |
 |------|---------|-----------------|
-| STT | `mock`, `deepgram`, `openai` | `mock` |
+| STT | `mock`, `deepgram` | `mock` |
 | LLM | `mock`, `openai` | `mock` |
-| TTS | `mock`, `openai`, `cartesia`, `elevenlabs` | `mock` |
+| TTS | `mock`, `cartesia` | `mock` |
 | Embeddings | `mock`, `openai` | `mock` |
 
 ```bash
 STT_PROVIDER=deepgram
 LLM_PROVIDER=openai
-TTS_PROVIDER=elevenlabs
+TTS_PROVIDER=cartesia
 OPENAI_API_KEY=sk-...
 DEEPGRAM_API_KEY=...
+CARTESIA_API_KEY=...
 ```
 
 Production validation enforces real providers when `DEMO_ENABLED=false`.
@@ -272,7 +275,7 @@ No — WebSocket voice works without it. LiveKit adds browser WebRTC.
 Yes — `./deploy.sh init` on Ubuntu 24.04 with automatic HTTPS.
 
 **What's not production-ready yet?**  
-Zendesk/Freshdesk connectors are stubs; dashboard JWT uses localStorage (httpOnly cookies planned for v1.1). See [known limitations](docs/release/known-limitations.md).
+Zendesk/Freshdesk connectors were removed (stubs); use `mock` ticketing and `internal`/`mock` knowledge. Dashboard login uses HttpOnly cookies (JWT paste still works as Bearer override). See [known limitations](docs/release/known-limitations.md).
 
 [Full FAQ →](docs/FAQ.md)
 

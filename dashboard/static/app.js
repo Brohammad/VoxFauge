@@ -93,9 +93,34 @@ function parseApiError(status, body) {
   return body.length > 180 ? `${body.slice(0, 180)}…` : body;
 }
 
+function readCookie(name) {
+  const prefix = `${name}=`;
+  const parts = document.cookie.split(";").map((p) => p.trim());
+  for (const part of parts) {
+    if (part.startsWith(prefix)) {
+      return decodeURIComponent(part.slice(prefix.length));
+    }
+  }
+  return "";
+}
+
+function authHeaders(extra = {}) {
+  const headers = { ...extra };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  } else {
+    const csrf = readCookie("voxforge_csrf");
+    if (csrf) {
+      headers["X-CSRF-Token"] = csrf;
+    }
+  }
+  return headers;
+}
+
 async function api(path) {
   const res = await fetch(`${API}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: "include",
+    headers: authHeaders(),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -106,12 +131,12 @@ async function api(path) {
 
 async function agentConfigApi(path, options = {}) {
   const res = await fetch(`/api/v1/agent-configs${path}`, {
+    credentials: "include",
     ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
+    headers: authHeaders({
       "Content-Type": "application/json",
       ...(options.headers || {}),
-    },
+    }),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -123,7 +148,8 @@ async function agentConfigApi(path, options = {}) {
 
 async function authApi(path) {
   const res = await fetch(`/api/v1/auth${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: "include",
+    headers: authHeaders(),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -146,12 +172,12 @@ function defaultAcsUrl(id) {
 async function ssoApi(path, options = {}) {
   const id = await ensureOrgId();
   const res = await fetch(`/api/v1/orgs/${id}/sso/saml${path}`, {
+    credentials: "include",
     ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
+    headers: authHeaders({
       "Content-Type": "application/json",
       ...(options.headers || {}),
-    },
+    }),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -190,6 +216,7 @@ async function loginWithPassword() {
   clearError();
   const res = await fetch("/api/v1/auth/login", {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
@@ -197,18 +224,20 @@ async function loginWithPassword() {
   if (!res.ok) {
     throw new Error(parseApiError(res.status, body));
   }
-  const data = JSON.parse(body);
-  token = data.access_token || data.tokens?.access_token;
-  if (!token) {
-    throw new Error("Login succeeded but no access token was returned.");
-  }
+  // Prefer HttpOnly cookie session; clear any prior localStorage JWT.
+  token = "";
   orgId = null;
-  els.tokenInput.value = token;
-  localStorage.setItem("voxforge_token", token);
+  els.tokenInput.value = "";
+  localStorage.removeItem("voxforge_token");
   await refreshAll();
 }
 
-function logout() {
+async function logout() {
+  try {
+    await fetch("/api/v1/auth/logout", { method: "POST", credentials: "include" });
+  } catch {
+    // ignore network errors on logout
+  }
   token = "";
   orgId = null;
   els.tokenInput.value = "";
@@ -340,7 +369,7 @@ async function loadReplay(sessionId) {
     throw new Error("Enter a session UUID to load replay");
   }
   const res = await fetch(`/api/v1/sessions/${id}/replay`, {
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: "include", headers: authHeaders(),
   });
   if (!res.ok) {
     const msg = await res.text();
@@ -714,11 +743,9 @@ function saveKbRecentUploads() {
 
 async function knowledgeApi(path, options = {}) {
   const res = await fetch(`/api/v1/knowledge${path}`, {
+    credentials: "include",
     ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(options.headers || {}),
-    },
+    headers: authHeaders({ ...(options.headers || {}) }),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -734,12 +761,12 @@ async function knowledgeApi(path, options = {}) {
 
 async function handoffsApi(path, options = {}) {
   const res = await fetch(`/api/v1/handoffs${path}`, {
+    credentials: "include",
     ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
+    headers: authHeaders({
       "Content-Type": "application/json",
       ...(options.headers || {}),
-    },
+    }),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -905,10 +932,8 @@ function renderOnboardingStatus(run) {
 async function callOnboarding(path, body) {
   const res = await fetch(`/api/v1/onboarding${path}`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
+    credentials: "include",
+    headers: authHeaders({ "Content-Type": "application/json" }),
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
@@ -920,7 +945,7 @@ async function callOnboarding(path, body) {
 
 async function loadOnboardingStatus() {
   const res = await fetch("/api/v1/onboarding/status", {
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: "include", headers: authHeaders(),
   });
   if (!res.ok) {
     const msg = await res.text();
@@ -931,9 +956,9 @@ async function loadOnboardingStatus() {
 }
 
 async function refreshAll() {
-  if (!token) return;
   clearError();
   try {
+    await ensureOrgId();
     await Promise.all([
       loadOverview(),
       loadSessions(),

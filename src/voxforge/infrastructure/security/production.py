@@ -26,11 +26,7 @@ def _is_insecure_secret(value: str) -> bool:
 
 
 def _mock_providers_in_use(settings: Settings) -> list[str]:
-    return [
-        name
-        for name in _MOCK_PROVIDER_FIELDS
-        if getattr(settings, name, "").lower() == "mock"
-    ]
+    return [name for name in _MOCK_PROVIDER_FIELDS if getattr(settings, name, "").lower() == "mock"]
 
 
 def collect_production_errors(settings: Settings) -> list[str]:
@@ -85,13 +81,22 @@ def collect_production_errors(settings: Settings) -> list[str]:
 
     if settings.handoff_enabled:
         if not settings.handoff_replay_signing_secret.strip():
-            errors.append(
-                "HANDOFF_REPLAY_SIGNING_SECRET must be set when handoff is enabled"
-            )
+            errors.append("HANDOFF_REPLAY_SIGNING_SECRET must be set when handoff is enabled")
         elif _is_insecure_secret(settings.handoff_replay_signing_secret):
-            errors.append(
-                "HANDOFF_REPLAY_SIGNING_SECRET must be set to a strong unique value"
-            )
+            errors.append("HANDOFF_REPLAY_SIGNING_SECRET must be set to a strong unique value")
+        elif settings.handoff_replay_signing_secret == settings.jwt_secret_key:
+            errors.append("HANDOFF_REPLAY_SIGNING_SECRET must differ from JWT_SECRET_KEY")
+
+    stub_providers: list[str] = []
+    if settings.ticketing_provider.lower() in ("zendesk", "freshdesk"):
+        stub_providers.append(f"TICKETING_PROVIDER={settings.ticketing_provider}")
+    if settings.knowledge_base_provider.lower() in ("zendesk", "freshdesk"):
+        stub_providers.append(f"KNOWLEDGE_BASE_PROVIDER={settings.knowledge_base_provider}")
+    if stub_providers:
+        errors.append(
+            "Stub support integrations are not allowed in production "
+            f"(use mock or internal): {', '.join(stub_providers)}"
+        )
 
     if settings.metrics_allow_anonymous_effective:
         errors.append(
@@ -125,9 +130,7 @@ def log_startup_security_warnings(settings: Settings) -> None:
     if not settings.cors_origin_list:
         logger.warning("CORS_ORIGINS is unset; CORSMiddleware is disabled")
     if not settings.demo_enabled:
-        logger.info(
-            "DEMO_ENABLED is false; /demo quickstart and /api/v1/demo/* return 404"
-        )
+        logger.info("DEMO_ENABLED is false; /demo quickstart and /api/v1/demo/* return 404")
 
 
 def validate_production_settings(settings: Settings) -> None:

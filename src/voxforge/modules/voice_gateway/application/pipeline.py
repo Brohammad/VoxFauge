@@ -139,7 +139,9 @@ class VoicePipelineService:
                 span.record_exception(exc)
                 record_provider_error(self._settings.stt_provider, "transcribe_stream")
                 logger.error("pipeline_listening_error", session_id=str(session_id), error=str(exc))
-                await self._maybe_await(callbacks.on_error("pipeline_error", str(exc)))
+                await self._maybe_await(
+                    callbacks.on_error("pipeline_error", "Voice pipeline failed")
+                )
 
     async def run_text_turn(
         self,
@@ -275,7 +277,7 @@ class VoicePipelineService:
         except Exception as exc:
             record_provider_error(self._settings.tts_provider, "synthesize_stream")
             logger.error("pipeline_tts_error", session_id=str(session_id), error=str(exc))
-            await self._maybe_await(callbacks.on_error("tts_error", str(exc)))
+            await self._maybe_await(callbacks.on_error("tts_error", "Speech synthesis failed"))
 
         if assistant_text:
             trace = self._response_generator.get_last_agent_trace(session_id)

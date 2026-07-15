@@ -37,6 +37,10 @@ test-cov:
 
 lint:
 	ruff check src tests
+	ruff format --check src tests
+
+typecheck:
+	pyright
 
 livekit-worker:
 	python -m voxforge.infrastructure.livekit.worker

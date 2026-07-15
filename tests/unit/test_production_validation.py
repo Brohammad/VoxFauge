@@ -45,9 +45,7 @@ def test_production_validation_rejects_weak_secrets():
 
 
 def test_production_validation_requires_trusted_hosts():
-    errors = collect_production_errors(
-        _production_settings(trusted_hosts="*", demo_enabled=False)
-    )
+    errors = collect_production_errors(_production_settings(trusted_hosts="*", demo_enabled=False))
     assert any("TRUSTED_HOSTS" in e for e in errors)
 
 
@@ -61,6 +59,21 @@ def test_production_validation_rejects_mock_providers_without_demo():
 def test_production_validation_requires_replay_signing_secret():
     errors = collect_production_errors(_production_settings(handoff_replay_signing_secret=""))
     assert any("HANDOFF_REPLAY_SIGNING_SECRET" in e for e in errors)
+
+
+def test_production_validation_requires_distinct_replay_secret():
+    secret = "d" * 32
+    errors = collect_production_errors(
+        _production_settings(jwt_secret_key=secret, handoff_replay_signing_secret=secret)
+    )
+    assert any("must differ from JWT_SECRET_KEY" in e for e in errors)
+
+
+def test_production_validation_rejects_stub_support_providers():
+    errors = collect_production_errors(
+        _production_settings(ticketing_provider="zendesk", knowledge_base_provider="freshdesk")
+    )
+    assert any("Stub support integrations" in e for e in errors)
 
 
 def test_development_skips_validation():

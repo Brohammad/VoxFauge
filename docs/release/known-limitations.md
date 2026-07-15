@@ -8,7 +8,8 @@
 
 ## Integrations
 
-- **Zendesk / Freshdesk** — Provider stubs raise `ProviderError`; do not set in production.
+- **Zendesk / Freshdesk** — Unimplemented stubs removed from the provider factory; do not set these provider names.
+- **Dashboard auth** — Login sets HttpOnly cookies; pasting a JWT into the dashboard still uses Bearer (localStorage) as an override for API debugging.
 - **MCP servers** — Require `pip install -e ".[mcp]"` in production image when `MCP_SERVERS_CONFIG` is set.
 
 ## Operations

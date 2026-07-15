@@ -66,6 +66,13 @@ jobs:
       - name: Lint
         run: ruff check src tests
 
+      - name: Format check
+        run: ruff format --check src tests
+
+      - name: Typecheck (advisory)
+        continue-on-error: true
+        run: pyright
+
       - name: Dependency audit
         run: |
           pip install pip-audit

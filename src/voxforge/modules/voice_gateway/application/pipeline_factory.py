@@ -1,4 +1,4 @@
-"""Shared VoicePipelineService wiring for WebSocket and LiveKit transports."""
+"""Shared VoicePipelineService wiring for WebSocket, LiveKit, and REST onboarding."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from voxforge.infrastructure.db.handoff_repository import HandoffRepository
 from voxforge.infrastructure.db.memory_repository import MemoryRepository
 from voxforge.infrastructure.db.outcome_repository import OutcomeRepository
 from voxforge.infrastructure.db.tool_repository import ToolCallRepository
-from voxforge.infrastructure.providers.embeddings.openai import OpenAIEmbeddingProvider
+from voxforge.infrastructure.providers.embeddings.factory import create_embedding_provider
 from voxforge.infrastructure.providers.factory import (
     create_llm_provider,
     create_stt_provider,
@@ -42,6 +42,8 @@ class VoicePipelineBundle:
     session_manager: SessionManager
     pipeline: VoicePipelineService
     response_generator: object
+    memory_service: MemoryService | None = None
+    handoff_orchestrator: HandoffOrchestrator | None = None
 
 
 def build_voice_pipeline_bundle(
@@ -52,6 +54,7 @@ def build_voice_pipeline_bundle(
     *,
     mcp_registry: MCPRuntimeRegistry | None = None,
 ) -> VoicePipelineBundle:
+    """Single composition root for the voice critical path."""
     session_manager = SessionManager(db_session, state_store, event_bus, settings)
     stt = create_stt_provider(settings)
     llm = create_llm_provider(settings)
@@ -74,10 +77,7 @@ def build_voice_pipeline_bundle(
     if settings.memory_enabled:
         memory_service = MemoryService(
             MemoryRepository(db_session),
-            OpenAIEmbeddingProvider(
-                settings.openai_api_key,
-                model=settings.memory_embedding_model,
-            ),
+            create_embedding_provider(settings),
             settings,
             llm,
         )
@@ -106,7 +106,7 @@ def build_voice_pipeline_bundle(
 
     evaluation_engine: EvaluationEngine | None = None
     if settings.evaluation_enabled:
-        evaluation_engine = EvaluationEngine(EvaluationRepository(db_session), settings)
+        evaluation_engine = EvaluationEngine(EvaluationRepository(db_session), settings, llm)
 
     outcome_service = OutcomeExtractionService(OutcomeRepository(db_session))
     tts = create_tts_provider(settings)
@@ -128,4 +128,6 @@ def build_voice_pipeline_bundle(
         session_manager=session_manager,
         pipeline=pipeline,
         response_generator=response_generator,
+        memory_service=memory_service,
+        handoff_orchestrator=handoff_orchestrator,
     )
