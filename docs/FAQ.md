@@ -1,41 +1,125 @@
 # Frequently Asked Questions
 
-## Do I need API keys to try VoxForge locally?
+Quick answers. Full docs: [README.md](README.md)
 
-No. Copy `.env.example` — mock STT/LLM/TTS/embedding providers work without paid keys. `DEMO_ENABLED=true` enables the public demo.
+---
 
-## How do I deploy to production?
+## Getting started
 
-See [docs/deployment/guide.md](deployment/guide.md). Summary: Ubuntu VPS → `./scripts/setup-production-env.sh your-domain.example` → `./deploy.sh init`.
+### Do I need API keys to try VoxForge locally?
 
-## Why does `/demo` return 404?
+No. Copy `.env.example` — mock STT/LLM/TTS/embedding providers work without paid keys. Open http://localhost:8000/demo and click **Run demo call**.
 
-Set `DEMO_ENABLED=true` in `.env` and restart the server.
+### How long does local setup take?
 
-## Can I use real voice providers?
+About 15 minutes. See [ONBOARDING.md](ONBOARDING.md).
 
-Yes. Set `STT_PROVIDER=deepgram`, `LLM_PROVIDER=openai`, `TTS_PROVIDER=cartesia` and provide API keys. Production validation requires real providers when `DEMO_ENABLED=false`.
+### What's the difference between local and production config?
 
-## How do knowledge base uploads get processed?
+| File | Use |
+|------|-----|
+| `.env` | Local development |
+| `.env.production` | VPS deployment (never commit) |
 
-With `KNOWLEDGE_WORKER_ENABLED=false` (default local), ingestion runs inline. In production, enable the `knowledge` compose profile or set `KNOWLEDGE_WORKER_ENABLED=true` — `deploy.sh` starts the worker automatically.
+See [CONFIGURATION.md](CONFIGURATION.md).
 
-## Is LiveKit required?
+---
 
-No. WebSocket voice works without LiveKit. LiveKit enables WebRTC browser audio — set `LIVEKIT_URL` and start the `livekit` worker profile.
+## Deployment
 
-## How do I run browser tests?
+### How do I deploy to production?
 
 ```bash
-make test-browser
+./scripts/setup-production-env.sh your-domain.example.com
+./deploy.sh init
 ```
 
-Requires Postgres + Redis running locally.
+Full guide: [deployment/guide.md](deployment/guide.md)
 
-## What is the test coverage gate?
+### Is there a live reference deployment?
 
-70% minimum in CI (`--cov-fail-under=70`). Target for business logic is 90% per testing strategy.
+Yes — https://voxforge.brohammad.tech ([record](deployment/public-deployment-record.md))
+
+### What VPS size do I need?
+
+Minimum **2 GB RAM** for core stack. Use **4 GB+** if enabling knowledge worker + monitoring.
+
+### How do backups work?
+
+`./deploy.sh backup` — see [operations/backup-restore.md](operations/backup-restore.md)
+
+---
+
+## Voice & providers
+
+### Can I use real voice providers?
+
+Yes. Set `STT_PROVIDER`, `LLM_PROVIDER`, `TTS_PROVIDER` and API keys. Production validation requires real providers when `DEMO_ENABLED=false`.
+
+### Is LiveKit required?
+
+No. WebSocket voice works without LiveKit. LiveKit adds browser WebRTC — set `LIVEKIT_URL` and deploy the `livekit` worker profile.
+
+### Why does `/demo` return 404?
+
+Set `DEMO_ENABLED=true` in `.env` and restart.
+
+---
+
+## Knowledge base
+
+### How are uploads processed?
+
+- **Local (`KNOWLEDGE_WORKER_ENABLED=false`):** inline ingestion
+- **Production:** set `KNOWLEDGE_WORKER_ENABLED=true` — `deploy.sh` starts the worker
+
+### Why does search return no results with mock embeddings?
+
+Mock provider uses a permissive similarity threshold automatically. Ensure documents show status `ready`.
+
+---
+
+## Testing & CI
+
+### How do I run tests?
+
+```bash
+make test              # 346+ tests (excludes browser)
+make test-browser      # Playwright UI journeys
+```
+
+See [testing/README.md](testing/README.md).
+
+### What is the coverage gate?
+
+70% minimum in CI. Report: [testing/coverage-report.md](testing/coverage-report.md)
+
+---
+
+## Security
+
+### Where are dashboard tokens stored?
+
+JWT in browser `localStorage`. httpOnly cookies planned for v1.1. See [release/known-limitations.md](release/known-limitations.md).
+
+### How do I report a vulnerability?
+
+[SECURITY.md](../SECURITY.md) — private advisory, not a public issue.
+
+---
+
+## Contributing & pilots
+
+### How do I become a design partner?
+
+[pilot/onboarding-guide.md](pilot/onboarding-guide.md)
+
+### How is VoxForge different from Vapi or Retell?
+
+Self-hosted, open source, evaluation/replay built-in, no per-minute platform fee. [benchmarks/competitive-analysis.md](benchmarks/competitive-analysis.md)
+
+---
 
 ## Known limitations
 
-See [docs/release/known-limitations.md](release/known-limitations.md).
+[release/known-limitations.md](release/known-limitations.md) · [ROADMAP.md](ROADMAP.md)

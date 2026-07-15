@@ -1,5 +1,7 @@
 # VoxForge Hardening Sprint
 
+> **Note:** Historical document from pre-RC-1 hardening. Current status: [release/RC-1-REPORT.md](release/RC-1-REPORT.md) and [release/known-limitations.md](release/known-limitations.md).
+
 Production blockers from the staff engineering review. No architectural redesign — fixes only.
 
 **Goal:** Move from *Needs additional engineering before release* → *Ready for enterprise pilot*.

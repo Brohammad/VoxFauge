@@ -5,8 +5,8 @@ Thank you for helping improve VoxForge. This project targets production-grade vo
 ## Development setup
 
 ```bash
-git clone https://github.com/Brohammad/VoxForge.git
-cd VoxForge
+git clone https://github.com/Brohammad/VoxFauge.git
+cd VoxFauge
 cp .env.example .env
 docker compose up -d postgres redis
 pip install -e ".[dev,livekit]"
@@ -23,8 +23,8 @@ Open:
 ## Running tests
 
 ```bash
-# Full suite
-pytest
+# Full suite (excludes browser — use make test-browser for Playwright)
+make test
 
 # By layer
 make test-unit
@@ -32,6 +32,7 @@ make test-integration
 make test-feature
 make test-failure
 make test-e2e
+make test-browser
 
 # Lint
 ruff check src tests
@@ -78,4 +79,6 @@ Report vulnerabilities privately — see [SECURITY.md](SECURITY.md).
 
 ## Questions
 
-Open a [GitHub Discussion](https://github.com/Brohammad/VoxForge/discussions) or file an issue with the `question` label.
+Open a [GitHub Discussion](https://github.com/Brohammad/VoxFauge/discussions) or file an issue.
+
+Documentation index: [docs/README.md](docs/README.md)

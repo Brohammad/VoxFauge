@@ -21,11 +21,11 @@ Deploy VoxForge on a single VPS using Docker Compose, NGINX, and Let's Encrypt T
 
 ```bash
 # On the VPS
-git clone https://github.com/your-org/VoxForge.git
-cd VoxForge
+git clone https://github.com/Brohammad/VoxFauge.git
+cd VoxFauge
 
-cp .env.production.example .env.production
-# Edit secrets: POSTGRES_PASSWORD, JWT_SECRET_KEY, API_KEY_HASH_PEPPER, PUBLIC_BASE_URL
+./scripts/setup-production-env.sh your-domain.example.com
+# Or manually: cp .env.production.example .env.production
 
 chmod +x deploy.sh scripts/backup_postgres.sh
 ./deploy.sh init
@@ -44,7 +44,7 @@ chmod +x deploy.sh scripts/backup_postgres.sh
 Copy `.env.production.example` to `.env.production`. Or generate secrets automatically:
 
 ```bash
-./scripts/setup-production-env.sh
+./scripts/setup-production-env.sh your-domain.example.com
 ```
 
 Required values (if not using setup script):
@@ -149,8 +149,11 @@ Production compose sets per-service CPU and memory limits with defaults suitable
 
 ## Related docs
 
+- [Documentation index](../README.md)
+- [Operations runbook](../operations/runbook.md)
 - [Operations guide](operations.md)
 - [Troubleshooting](troubleshooting.md)
+- [Recovery guide](recovery-guide.md)
 - [Architecture overview](architecture.md)
 - [Security overview](security.md)
-- [Production checklist](production-checklist.md)
+- [Verification checklist](verification-checklist.md)

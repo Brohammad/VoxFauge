@@ -1,6 +1,8 @@
 # Phase 5 Deliverables — Public Deployment
 
-Status: **Ready for VPS deployment** (infrastructure and documentation complete; cloud deploy requires your domain and VPS credentials).
+> **Note:** This is a historical sprint document. For current deployment guidance, see [verification-checklist.md](verification-checklist.md) and [public-deployment-record.md](public-deployment-record.md).
+
+Status: **Deployed** at https://voxforge.brohammad.tech
 
 ## URLs
 
