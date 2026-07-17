@@ -23,6 +23,7 @@ Materials for demonstrating VoxForge to recruiters, investors, and pilot custome
 | Document | Purpose |
 |----------|---------|
 | [recording-checklist.md](recording-checklist.md) | Pre-flight, assets, ffmpeg GIF |
+| [../product/real-voice-proof.md](../product/real-voice-proof.md) | Automated + recorded real-provider proof |
 
 ## Assets
 

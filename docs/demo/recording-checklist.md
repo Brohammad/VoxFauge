@@ -2,6 +2,8 @@
 
 ## Pre-recording
 
+- [ ] Run `./scripts/prove-real-voice.sh https://your-host` with real API keys (automated gate)
+- [ ] Set `STT_PROVIDER=deepgram`, `LLM_PROVIDER=openai`, `TTS_PROVIDER=cartesia`, `DEMO_ENABLED=false` on host
 - [ ] Use https://voxforge.brohammad.tech (or local with same UI)
 - [ ] Browser: Chrome, 1920×1080, dark mode
 - [ ] Close unrelated tabs; hide bookmarks
