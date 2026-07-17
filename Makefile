@@ -1,4 +1,4 @@
-.PHONY: dev-up dev-down test test-unit test-integration test-feature test-failure test-e2e test-browser test-cov lint benchmark-onboarding benchmark-knowledge-base livekit-worker deploy-validate deploy-smoke prove-real-voice
+.PHONY: dev-up dev-down test test-unit test-integration test-feature test-failure test-e2e test-browser test-cov lint benchmark-onboarding benchmark-knowledge-base livekit-worker deploy-validate deploy-smoke prove-real-voice uptime-check
 
 dev-up:
 	docker compose up -d postgres redis
@@ -55,6 +55,10 @@ deploy-smoke:
 prove-real-voice:
 	chmod +x scripts/prove-real-voice.sh
 	./scripts/prove-real-voice.sh
+
+uptime-check:
+	chmod +x scripts/uptime-ready-check.sh
+	./scripts/uptime-ready-check.sh
 
 benchmark-onboarding:
 	python scripts/benchmark_onboarding.py --iterations 10 --warmup 2

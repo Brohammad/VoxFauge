@@ -15,6 +15,8 @@ VoxForge exposes liveness and readiness for free uptime monitors (UptimeRobot, H
 2. Alert to Slack/email/PagerDuty on 2 consecutive failures.
 3. Optional: also watch TLS certificate expiry on the same host.
 
+**Slack alerts:** See [uptime-slack.md](./uptime-slack.md) for UptimeRobot → Slack and `scripts/uptime-ready-check.sh`.
+
 Example (Healthchecks.io cron-style):
 
 ```bash

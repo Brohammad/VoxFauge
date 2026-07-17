@@ -13,6 +13,7 @@ const els = {
   authStatus: document.getElementById("auth-status"),
   errorBanner: document.getElementById("error-banner"),
   overviewCards: document.getElementById("overview-cards"),
+  voiceKpiCards: document.getElementById("voice-kpi-cards"),
   sessionsBody: document.getElementById("sessions-body"),
   latencyChart: document.getElementById("latency-chart"),
   evalSummary: document.getElementById("eval-summary"),
@@ -659,19 +660,67 @@ function setTrendDays(days) {
   }
 }
 
+function kpiCard(label, value, sub = "", tone = "") {
+  return `<div class="card voice-kpi-card ${tone}"><div class="card-label">${label}</div><div class="card-value">${value}</div>${sub ? `<div class="card-sub">${sub}</div>` : ""}</div>`;
+}
+
+function latencyLabel(metricName) {
+  return ({
+    stt_ms: "STT",
+    llm_first_token_ms: "LLM first token",
+    tts_first_byte_ms: "TTS first byte",
+    e2e_ms: "End-to-end",
+  }[metricName] || metricName.replace(/_/g, " "));
+}
+
 async function loadOverview() {
-  const [d, outcomes] = await Promise.all([
+  const [d, outcomes, latencyBuckets] = await Promise.all([
     api("/overview"),
     api(`/outcomes?days=${trendDays}`),
+    api("/latency"),
   ]);
+
+  const bucketByName = Object.fromEntries((latencyBuckets || []).map((b) => [b.metric_name, b]));
+  const avgCostPerTurn = d.total_evaluations > 0 && d.estimated_total_cost_usd != null
+    ? d.estimated_total_cost_usd / d.total_evaluations
+    : null;
+
+  if (els.voiceKpiCards) {
+    const latencyCards = ["e2e_ms", "stt_ms", "llm_first_token_ms", "tts_first_byte_ms"].map((name) => {
+      const bucket = bucketByName[name];
+      if (!bucket) {
+        return kpiCard(latencyLabel(name), "—", "No samples yet");
+      }
+      return kpiCard(
+        latencyLabel(name),
+        fmtMs(bucket.avg_ms),
+        `${bucket.sample_count} turns${bucket.p95_ms != null ? ` · p95 ${Math.round(bucket.p95_ms)} ms` : ""}`,
+        name === "e2e_ms" ? "kpi-accent" : "",
+      );
+    });
+    els.voiceKpiCards.innerHTML = [
+      ...latencyCards,
+      kpiCard(
+        "Est. total cost",
+        fmtCost(d.estimated_total_cost_usd),
+        `${d.total_evaluations} evaluated turns`,
+        "kpi-cost",
+      ),
+      kpiCard(
+        "Avg cost / turn",
+        fmtCost(avgCostPerTurn),
+        "From evaluation cost metrics",
+        "kpi-cost",
+      ),
+    ].join("");
+  }
+
   els.overviewCards.innerHTML = [
     card("Total Sessions", d.total_sessions, `${d.active_sessions} active`),
     card("Messages", d.total_messages),
     card("Tool Calls", d.total_tool_calls),
     card("Evaluations", d.total_evaluations, `${d.failed_evaluations} failed`),
-    card("Avg E2E Latency", fmtMs(d.avg_e2e_latency_ms)),
     card("Avg Eval Score", fmtScore(d.avg_evaluation_score)),
-    card("Est. Total Cost", fmtCost(d.estimated_total_cost_usd)),
     card("Task Success Rate", fmtPct(outcomes.task_success_rate)),
     card("Escalation Rate", fmtPct(outcomes.escalation_rate)),
     card("Avg Resolution Time", `${Math.round(outcomes.avg_resolution_time_seconds || 0)}s`),
