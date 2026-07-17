@@ -100,7 +100,7 @@ See [testing/README.md](testing/README.md).
 
 ### Where are dashboard tokens stored?
 
-JWT in browser `localStorage`. httpOnly cookies planned for v1.1. See [release/known-limitations.md](release/known-limitations.md).
+Login sets **HttpOnly cookies** (`voxforge_access`) with CSRF protection for mutating requests. Pasting a JWT into the dashboard connect bar still uses Bearer + `localStorage` as a debugging override. See [release/known-limitations.md](release/known-limitations.md).
 
 ### How do I report a vulnerability?
 

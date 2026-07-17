@@ -1,10 +1,16 @@
-# Rename remote to VoxForge
+# Git remote sync
 
-Docs and badges already point at `Brohammad/VoxForge`. If the GitHub repo is still named `VoxFauge`, rename it once:
+GitHub repo is **Brohammad/VoxForge** (renamed from `VoxFauge`). GitHub redirects old clone URLs.
+
+If your local `origin` still points at `VoxFauge`:
 
 ```bash
-gh repo rename VoxForge --repo Brohammad/VoxFauge --yes
 git remote set-url origin https://github.com/Brohammad/VoxForge.git
+git remote -v
 ```
 
-GitHub keeps redirects from the old name for clones and stars.
+Verify:
+
+```bash
+gh repo view Brohammad/VoxForge --json name,url
+```
