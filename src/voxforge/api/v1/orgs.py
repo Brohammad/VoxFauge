@@ -8,14 +8,16 @@ from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from voxforge.api.dependencies import get_auth_service, get_current_principal, require_scope
+from voxforge.api.dependencies import get_auth_service, get_current_principal, get_invite_email_sender, require_scope
 from voxforge.core.domain.auth import Organization, OrgRole, Principal
 from voxforge.core.exceptions import (
     ForbiddenError,
     InvalidCredentialsError,
     OrganizationNotFoundError,
 )
+from voxforge.config import Settings, get_settings
 from voxforge.infrastructure.db.session import get_db_session
+from voxforge.infrastructure.email.invite_mailer import InviteEmailPayload, InviteEmailSender
 from voxforge.modules.auth.application.service import AuthService
 
 router = APIRouter(prefix="/orgs", tags=["organizations"])
@@ -58,7 +60,8 @@ class InviteResponse(BaseModel):
     role: str
     expires_at: str
     accept_url: str
-    token: str
+    token: str | None = None
+    email_sent: bool = False
 
 
 class MemberResponse(BaseModel):
@@ -172,9 +175,12 @@ async def create_invite(
     body: CreateInviteRequest,
     principal: Principal = Depends(get_current_principal),
     auth_service: AuthService = Depends(get_auth_service),
+    mailer: InviteEmailSender = Depends(get_invite_email_sender),
+    settings: Settings = Depends(get_settings),
     db: AsyncSession = Depends(get_db_session),
 ) -> InviteResponse:
     try:
+        org = await auth_service.get_org(org_id)
         invite, raw_token, accept_url = await auth_service.create_invite(
             org_id=org_id,
             email=str(body.email),
@@ -186,6 +192,19 @@ async def create_invite(
         raise HTTPException(status_code=403, detail=exc.message) from exc
     except InvalidCredentialsError as exc:
         raise HTTPException(status_code=400, detail=exc.message) from exc
+    except OrganizationNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+
+    email_sent = await mailer.send_invite(
+        InviteEmailPayload(
+            to_email=invite.email,
+            org_name=org.name,
+            accept_url=accept_url,
+            role=invite.role,
+            expires_hours=settings.invite_ttl_hours,
+        )
+    )
+    expose_token = not email_sent and settings.app_env != "production"
     return InviteResponse(
         id=invite.id,
         org_id=invite.org_id,
@@ -193,7 +212,8 @@ async def create_invite(
         role=invite.role,
         expires_at=invite.expires_at.isoformat(),
         accept_url=accept_url,
-        token=raw_token,
+        token=raw_token if expose_token else None,
+        email_sent=email_sent,
     )
 
 

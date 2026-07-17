@@ -8,7 +8,7 @@ from voxforge.config import Settings, get_settings
 from voxforge.core.domain.auth import Principal
 from voxforge.core.events.bus import EventBus, get_event_bus
 from voxforge.core.exceptions import ForbiddenError, UnauthorizedError
-from voxforge.infrastructure.db.dashboard_repository import DashboardRepository
+from voxforge.infrastructure.email.invite_mailer import InviteEmailSender
 from voxforge.infrastructure.db.evaluation_repository import EvaluationRepository
 from voxforge.infrastructure.db.handoff_repository import HandoffRepository
 from voxforge.infrastructure.db.knowledge_repository import KnowledgeRepository
@@ -65,6 +65,10 @@ def get_auth_service(
     settings: Settings = Depends(get_settings),
 ) -> AuthService:
     return AuthService(db, settings)
+
+
+def get_invite_email_sender(settings: Settings = Depends(get_settings)) -> InviteEmailSender:
+    return InviteEmailSender(settings)
 
 
 def get_saml_connection_service(

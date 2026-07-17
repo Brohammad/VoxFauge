@@ -51,7 +51,21 @@ Cookie-authenticated mutating requests require `X-CSRF-Token` matching the `voxf
 
 ## Org invites
 
-`POST /api/v1/orgs/{org_id}/invites` with `{ "email", "role" }` returns a one-time `token` + `accept_url` (logged when SMTP is not configured). Accept via `POST /api/v1/auth/invites/accept`.
+`POST /api/v1/orgs/{org_id}/invites` with `{ "email", "role" }` creates a one-time invite. Accept via `POST /api/v1/auth/invites/accept`.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `EMAIL_PROVIDER` | `log` | `log` (dev), `resend`, or `smtp` |
+| `EMAIL_FROM` | `VoxForge <invites@voxforge.local>` | From address |
+| `RESEND_API_KEY` | — | Required when `EMAIL_PROVIDER=resend` |
+| `SMTP_HOST` | — | SMTP server hostname |
+| `SMTP_PORT` | `587` | SMTP port |
+| `SMTP_USER` | — | SMTP username (optional) |
+| `SMTP_PASSWORD` | — | SMTP password (optional) |
+| `SMTP_USE_TLS` | `true` | STARTTLS for SMTP |
+| `INVITE_TTL_HOURS` | `72` | Invite expiry |
+
+When email delivery succeeds, the API omits the raw `token` in production; in `log` mode the token is returned for local testing.
 
 ---
 

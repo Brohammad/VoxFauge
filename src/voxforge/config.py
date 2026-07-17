@@ -86,6 +86,14 @@ class Settings(BaseSettings):
     auth_csrf_cookie_name: str = "voxforge_csrf"
     auth_csrf_header_name: str = "X-CSRF-Token"
     invite_ttl_hours: int = 72
+    email_provider: str = "log"  # log | resend | smtp
+    email_from: str = "VoxForge <invites@voxforge.local>"
+    resend_api_key: str = ""
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_use_tls: bool = True
     ready_fail_on_degraded: bool = False
     saml_require_signed_assertions: bool = True
     saml_clock_skew_seconds: int = 120
