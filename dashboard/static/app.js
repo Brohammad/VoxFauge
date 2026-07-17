@@ -21,12 +21,24 @@ const els = {
   outcomesTrendTitle: document.getElementById("outcomes-trend-title"),
   activityList: document.getElementById("activity-list"),
   pageTitle: document.getElementById("page-title"),
-  onboardingStartBtn: document.getElementById("onboarding-start-btn"),
-  onboardingConnectBtn: document.getElementById("onboarding-connect-btn"),
-  onboardingSampleBtn: document.getElementById("onboarding-sample-btn"),
-  onboardingStatusBtn: document.getElementById("onboarding-status-btn"),
   onboardingStatus: document.getElementById("onboarding-status"),
   onboardingJson: document.getElementById("onboarding-json"),
+  wizardDismissBtn: document.getElementById("wizard-dismiss-btn"),
+  wizardProgress: document.getElementById("wizard-progress"),
+  wizardAuthStatus: document.getElementById("wizard-auth-status"),
+  wizardPresets: document.getElementById("wizard-presets"),
+  wizardPresetStatus: document.getElementById("wizard-preset-status"),
+  wizardKnowledgeForm: document.getElementById("wizard-knowledge-form"),
+  wizardCollectionName: document.getElementById("wizard-collection-name"),
+  wizardKnowledgeFile: document.getElementById("wizard-knowledge-file"),
+  wizardKnowledgeStatus: document.getElementById("wizard-knowledge-status"),
+  wizardSampleStatus: document.getElementById("wizard-sample-status"),
+  wizardCompleteStatus: document.getElementById("wizard-complete-status"),
+  wizardReplaySummary: document.getElementById("wizard-replay-summary"),
+  wizardBackBtn: document.getElementById("wizard-back-btn"),
+  wizardNextBtn: document.getElementById("wizard-next-btn"),
+  wizardOpenReplayBtn: document.getElementById("wizard-open-replay-btn"),
+  wizardOpenOverviewBtn: document.getElementById("wizard-open-overview-btn"),
   alertsSummary: document.getElementById("alerts-summary"),
   alertsList: document.getElementById("alerts-list"),
   replaySessionInput: document.getElementById("replay-session-input"),
@@ -71,6 +83,366 @@ const els = {
 
 let kbRecentUploads = JSON.parse(localStorage.getItem("voxforge_kb_uploads") || "[]");
 let kbPollTimer = null;
+
+const WIZARD_DISMISS_KEY = "voxforge_wizard_dismissed";
+const WIZARD_STATE_KEY = "voxforge_wizard_state";
+const WIZARD_DEFAULT_PRESET = "customer-support-deflection";
+
+const wizardState = {
+  step: 1,
+  presetSlug: WIZARD_DEFAULT_PRESET,
+  collectionId: null,
+  testSessionId: null,
+};
+
+function loadWizardStateFromStorage() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(WIZARD_STATE_KEY) || "{}");
+    if (saved.step) wizardState.step = saved.step;
+    if (saved.presetSlug) wizardState.presetSlug = saved.presetSlug;
+    if (saved.collectionId) wizardState.collectionId = saved.collectionId;
+    if (saved.testSessionId) wizardState.testSessionId = saved.testSessionId;
+  } catch {
+    // ignore corrupt storage
+  }
+}
+
+function saveWizardState() {
+  localStorage.setItem(WIZARD_STATE_KEY, JSON.stringify(wizardState));
+}
+
+function isWizardDismissed() {
+  return localStorage.getItem(WIZARD_DISMISS_KEY) === "1";
+}
+
+function dismissWizard() {
+  localStorage.setItem(WIZARD_DISMISS_KEY, "1");
+}
+
+function isAuthenticated() {
+  return Boolean(token) || readCookie("voxforge_access");
+}
+
+function setWizardStep(step) {
+  wizardState.step = step;
+  saveWizardState();
+  document.querySelectorAll(".wizard-step").forEach((node) => node.classList.add("hidden"));
+  const panel = document.getElementById(`wizard-step-${step}`);
+  if (panel) {
+    panel.classList.remove("hidden");
+    panel.classList.add("active");
+  }
+  els.wizardProgress?.querySelectorAll(".wizard-progress-step").forEach((node) => {
+    const n = Number(node.dataset.step);
+    node.classList.toggle("active", n === step);
+    node.classList.toggle("done", n < step);
+  });
+  if (els.wizardBackBtn) {
+    els.wizardBackBtn.disabled = step <= 1;
+  }
+  if (els.wizardNextBtn) {
+    els.wizardNextBtn.textContent = step >= 5 ? "Go to overview" : "Continue";
+  }
+  if (step === 2) {
+    loadWizardPresets().catch((err) => showError(err.message));
+  }
+  if (step === 5) {
+    renderWizardCompletion().catch((err) => showError(err.message));
+  }
+}
+
+function renderWizardAuthStatus() {
+  if (!els.wizardAuthStatus) return;
+  if (isAuthenticated()) {
+    els.wizardAuthStatus.textContent = orgId
+      ? `Connected · organization ${shortId(orgId)}`
+      : "Connected · loading organization…";
+  } else {
+    els.wizardAuthStatus.textContent = "Log in with email/password or paste a JWT above.";
+  }
+}
+
+function renderWizardPresets(presets) {
+  if (!els.wizardPresets) return;
+  const list = presets || [];
+  els.wizardPresets.innerHTML = list.map((preset) => `
+    <article class="preset-card ${preset.slug === wizardState.presetSlug ? "selected" : ""}" data-wizard-preset="${escapeHtml(preset.slug)}">
+      <div>
+        <span class="preset-source">${escapeHtml(preset.source)}</span>
+        <h3>${escapeHtml(preset.name)}</h3>
+      </div>
+      <p class="preset-description">${escapeHtml(preset.description)}</p>
+      <div class="preset-thresholds">${escapeHtml(renderPolicyThresholds(preset.eval_thresholds))}</div>
+    </article>
+  `).join("") || "<p class='card-sub'>No presets available.</p>";
+
+  els.wizardPresets.querySelectorAll("[data-wizard-preset]").forEach((card) => {
+    card.addEventListener("click", () => {
+      wizardState.presetSlug = card.dataset.wizardPreset;
+      saveWizardState();
+      els.wizardPresets.querySelectorAll(".preset-card").forEach((node) => {
+        node.classList.toggle("selected", node.dataset.wizardPreset === wizardState.presetSlug);
+      });
+      if (els.wizardPresetStatus) {
+        els.wizardPresetStatus.textContent = `Selected: ${wizardState.presetSlug}`;
+      }
+    });
+  });
+}
+
+async function loadWizardPresets() {
+  const [presets, active] = await Promise.all([
+    agentConfigApi("/presets"),
+    agentConfigApi("/active"),
+  ]);
+  renderWizardPresets(presets);
+  if (els.wizardPresetStatus) {
+    if (active) {
+      els.wizardPresetStatus.textContent = `Active config: v${active.version} · ${active.label}`;
+    } else {
+      els.wizardPresetStatus.textContent = `Selected: ${wizardState.presetSlug}`;
+    }
+  }
+}
+
+async function wizardApplyPreset() {
+  const slug = wizardState.presetSlug || WIZARD_DEFAULT_PRESET;
+  await agentConfigApi(`/presets/${slug}/apply`, {
+    method: "POST",
+    body: JSON.stringify({ change_note: "Applied from first-agent wizard" }),
+  });
+  wizardState.presetSlug = slug;
+  saveWizardState();
+  if (els.wizardPresetStatus) {
+    els.wizardPresetStatus.textContent = `Applied preset ${slug}`;
+  }
+}
+
+async function wizardUploadKnowledge() {
+  const name = els.wizardCollectionName?.value.trim() || "Support Docs";
+  const file = els.wizardKnowledgeFile?.files?.[0];
+  if (!file) {
+    throw new Error("Choose a document to upload");
+  }
+
+  if (els.wizardKnowledgeStatus) {
+    els.wizardKnowledgeStatus.textContent = "Creating collection…";
+  }
+
+  let collectionId = wizardState.collectionId;
+  if (!collectionId) {
+    const collections = await knowledgeApi("/collections");
+    const existing = (collections || []).find((item) => item.name === name);
+    if (existing) {
+      collectionId = existing.id;
+    } else {
+      const created = await knowledgeApi("/collections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      collectionId = created.id;
+    }
+    wizardState.collectionId = collectionId;
+    saveWizardState();
+  }
+
+  if (els.wizardKnowledgeStatus) {
+    els.wizardKnowledgeStatus.textContent = `Uploading ${file.name}…`;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("title", file.name);
+  const result = await knowledgeApi(`/collections/${collectionId}/documents`, {
+    method: "POST",
+    body: formData,
+  });
+
+  kbRecentUploads.unshift({
+    document_id: result.document_id,
+    job_id: result.job_id,
+    title: file.name,
+    collection_id: collectionId,
+    status: result.status,
+    progress_pct: 0,
+    uploaded_at: new Date().toISOString(),
+  });
+  saveKbRecentUploads();
+  scheduleKnowledgePolling();
+
+  if (els.wizardKnowledgeStatus) {
+    els.wizardKnowledgeStatus.textContent = "Processing document…";
+  }
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    await refreshKnowledgeUploadStatuses();
+    const latest = kbRecentUploads.find((item) => item.document_id === result.document_id);
+    const status = latest?.status || result.status;
+    if (status === "ready" || status === "indexed" || status === "completed") {
+      if (els.wizardKnowledgeStatus) {
+        els.wizardKnowledgeStatus.textContent = `Indexed ${file.name}`;
+      }
+      return;
+    }
+    if (status === "failed" || status === "error") {
+      throw new Error(latest?.error_message || "Document indexing failed");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+
+  if (els.wizardKnowledgeStatus) {
+    els.wizardKnowledgeStatus.textContent = `Uploaded ${file.name} · indexing may still be running`;
+  }
+}
+
+async function wizardRunSampleCall() {
+  if (els.wizardSampleStatus) {
+    els.wizardSampleStatus.textContent = "Running sample call…";
+  }
+  const run = await callOnboarding("/run-sample-call");
+  renderOnboardingStatus(run);
+  if (run.status !== "test_call_passed") {
+    throw new Error(`Sample call did not pass (${run.status || "unknown"})`);
+  }
+  wizardState.testSessionId = run.test_session_id;
+  saveWizardState();
+  if (els.wizardSampleStatus) {
+    els.wizardSampleStatus.textContent = `Passed · session ${shortId(run.test_session_id)}`;
+  }
+  await refreshAll();
+}
+
+async function renderWizardCompletion() {
+  const sessionId = wizardState.testSessionId;
+  if (!sessionId) {
+    if (els.wizardCompleteStatus) {
+      els.wizardCompleteStatus.textContent = "Sample call passed.";
+    }
+    return;
+  }
+  if (els.wizardCompleteStatus) {
+    els.wizardCompleteStatus.textContent = `Test call passed · session ${shortId(sessionId)}`;
+  }
+  try {
+    const res = await fetch(`/api/v1/sessions/${sessionId}/replay`, {
+      credentials: "include",
+      headers: authHeaders(),
+    });
+    if (!res.ok) return;
+    const replay = await res.json();
+    const lines = (replay.messages || []).slice(-4).map(
+      (msg) => `${msg.role}: ${(msg.content || "").slice(0, 120)}`,
+    );
+    if (els.wizardReplaySummary) {
+      els.wizardReplaySummary.textContent = [
+        replay.outcome
+          ? `task_success=${replay.outcome.task_success} · intent=${replay.outcome.intent}`
+          : "Outcome pending",
+        lines.join(" · ") || "Open replay for full transcript",
+      ].join("\n");
+    }
+  } catch {
+    if (els.wizardReplaySummary) {
+      els.wizardReplaySummary.textContent = "Open replay for transcript and metrics.";
+    }
+  }
+}
+
+async function inferWizardStepFromStatus() {
+  if (!isAuthenticated()) return 1;
+  try {
+    const res = await fetch("/api/v1/onboarding/status", {
+      credentials: "include",
+      headers: authHeaders(),
+    });
+    if (!res.ok) return 2;
+    const run = await res.json();
+    renderOnboardingStatus(run);
+    if (run?.status === "test_call_passed") {
+      wizardState.testSessionId = run.test_session_id || wizardState.testSessionId;
+      saveWizardState();
+      return 5;
+    }
+    if (run?.status === "token_connected") return 3;
+    if (run?.status === "started") return 2;
+  } catch {
+    return 2;
+  }
+  return 2;
+}
+
+async function initWizard(options = {}) {
+  loadWizardStateFromStorage();
+  renderWizardAuthStatus();
+  if (options.resetStep) {
+    const inferred = await inferWizardStepFromStatus();
+    if (inferred > wizardState.step) {
+      wizardState.step = inferred;
+      saveWizardState();
+    }
+  }
+  setWizardStep(wizardState.step);
+}
+
+async function maybeOpenWizardAfterLogin() {
+  if (isWizardDismissed()) return;
+  try {
+    const step = await inferWizardStepFromStatus();
+    if (step >= 5) return;
+    showSection("onboarding");
+    wizardState.step = step;
+    saveWizardState();
+    await initWizard();
+  } catch {
+    // non-fatal
+  }
+}
+
+async function wizardStepForward() {
+  clearError();
+  const step = wizardState.step;
+  if (step === 1) {
+    if (!isAuthenticated()) {
+      throw new Error("Log in or connect a token before continuing");
+    }
+    await ensureOrgId();
+    renderWizardAuthStatus();
+    await callOnboarding("/start");
+    if (token) {
+      await callOnboarding("/connect-token", { token_preview: token.slice(0, 8) });
+    } else {
+      await callOnboarding("/connect-token", { token_preview: "cookie-auth" });
+    }
+    await loadOnboardingStatus();
+    setWizardStep(2);
+    return;
+  }
+  if (step === 2) {
+    await wizardApplyPreset();
+    setWizardStep(3);
+    return;
+  }
+  if (step === 3) {
+    await wizardUploadKnowledge();
+    setWizardStep(4);
+    return;
+  }
+  if (step === 4) {
+    await wizardRunSampleCall();
+    setWizardStep(5);
+    return;
+  }
+  dismissWizard();
+  showSection("overview");
+  await refreshAll();
+}
+
+function wizardStepBack() {
+  if (wizardState.step <= 1) return;
+  setWizardStep(wizardState.step - 1);
+}
+
 
 els.tokenInput.value = token;
 
@@ -230,6 +602,7 @@ async function loginWithPassword() {
   els.tokenInput.value = "";
   localStorage.removeItem("voxforge_token");
   await refreshAll();
+  await maybeOpenWizardAfterLogin();
 }
 
 async function logout() {
@@ -969,6 +1342,7 @@ async function refreshAll() {
       loadPolicies(),
     ]);
     setConnected(true);
+    await maybeOpenWizardAfterLogin();
   } catch (err) {
     setConnected(false);
     showError(err.message);
@@ -1004,41 +1378,27 @@ document.querySelectorAll(".toggle-btn").forEach((btn) => {
   });
 });
 
-els.onboardingStartBtn?.addEventListener("click", async () => {
-  try {
-    const run = await callOnboarding("/start");
-    renderOnboardingStatus(run);
-    await refreshAll();
-  } catch (err) {
-    showError(err.message);
+els.wizardNextBtn?.addEventListener("click", () => {
+  wizardStepForward().catch((err) => showError(err.message));
+});
+
+els.wizardBackBtn?.addEventListener("click", () => wizardStepBack());
+
+els.wizardDismissBtn?.addEventListener("click", () => {
+  dismissWizard();
+  showSection("overview");
+});
+
+els.wizardOpenReplayBtn?.addEventListener("click", () => {
+  if (wizardState.testSessionId) {
+    openReplay(wizardState.testSessionId).catch((err) => showError(err.message));
   }
 });
 
-els.onboardingConnectBtn?.addEventListener("click", async () => {
-  try {
-    const run = await callOnboarding("/connect-token", { token_preview: token.slice(0, 8) });
-    renderOnboardingStatus(run);
-  } catch (err) {
-    showError(err.message);
-  }
-});
-
-els.onboardingSampleBtn?.addEventListener("click", async () => {
-  try {
-    const run = await callOnboarding("/run-sample-call");
-    renderOnboardingStatus(run);
-    await refreshAll();
-  } catch (err) {
-    showError(err.message);
-  }
-});
-
-els.onboardingStatusBtn?.addEventListener("click", async () => {
-  try {
-    await loadOnboardingStatus();
-  } catch (err) {
-    showError(err.message);
-  }
+els.wizardOpenOverviewBtn?.addEventListener("click", () => {
+  dismissWizard();
+  showSection("overview");
+  refreshAll().catch((err) => showError(err.message));
 });
 
 els.knowledgeRefreshBtn?.addEventListener("click", async () => {
@@ -1192,6 +1552,7 @@ document.querySelectorAll(".nav-link").forEach((link) => {
         await loadSso();
       }
       if (link.dataset.section === "onboarding") {
+        await initWizard({ resetStep: true });
         await loadOnboardingStatus();
       }
       if (link.dataset.section === "knowledge") {
@@ -1209,10 +1570,23 @@ document.querySelectorAll(".nav-link").forEach((link) => {
 
 setTrendDays(trendDays);
 
-if (token) {
+if (token || readCookie("voxforge_access")) {
   refreshAll();
   loadOnboardingStatus().catch(() => {});
   scheduleKnowledgePolling();
+} else {
+  loadWizardStateFromStorage();
+  renderWizardAuthStatus();
+}
+
+// Deep-link: /dashboard?invite=TOKEN opens wizard at connect step
+const inviteToken = new URLSearchParams(window.location.search).get("invite");
+if (inviteToken) {
+  showSection("onboarding");
+  setWizardStep(1);
+  if (els.wizardAuthStatus) {
+    els.wizardAuthStatus.textContent = "Accept your invite via API POST /api/v1/auth/invites/accept, then log in.";
+  }
 }
 
 setInterval(() => { if (token) refreshAll(); }, 30000);

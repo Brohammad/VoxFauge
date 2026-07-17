@@ -15,7 +15,7 @@
       </div>
       <nav>
         <a href="#overview" class="nav-link active" data-section="overview">Overview</a>
-        <a href="#onboarding" class="nav-link" data-section="onboarding">Onboarding</a>
+        <a href="#onboarding" class="nav-link" data-section="onboarding">First Agent</a>
         <a href="#knowledge" class="nav-link" data-section="knowledge">Knowledge Base</a>
         <a href="#handoffs" class="nav-link" data-section="handoffs">Handoffs</a>
         <a href="#alerts" class="nav-link" data-section="alerts">Alerts</a>
@@ -65,17 +65,78 @@
       </section>
 
       <section id="onboarding" class="section hidden">
-        <div class="panel">
-          <h2>Outcome-first Onboarding</h2>
-          <p>Complete: register account -> connect token -> run sample call -> verify KPI outcomes.</p>
-          <div class="button-row">
-            <button id="onboarding-start-btn" type="button">1. Start</button>
-            <button id="onboarding-connect-btn" type="button">2. Connect Token</button>
-            <button id="onboarding-sample-btn" type="button">3. Run Sample Call</button>
-            <button id="onboarding-status-btn" type="button">Refresh Status</button>
+        <div class="panel wizard-panel">
+          <div class="wizard-header">
+            <div>
+              <h2>First Agent Setup</h2>
+              <p class="card-sub">Configure a support agent, add knowledge, and run a test call in under 15 minutes.</p>
+            </div>
+            <button id="wizard-dismiss-btn" type="button" class="link-btn">Skip for now</button>
           </div>
-          <div id="onboarding-status" class="card-sub">No onboarding run yet.</div>
-          <pre id="onboarding-json" class="json-preview"></pre>
+
+          <ol id="wizard-progress" class="wizard-progress" aria-label="Setup progress">
+            <li class="wizard-progress-step active" data-step="1">Connect</li>
+            <li class="wizard-progress-step" data-step="2">Agent</li>
+            <li class="wizard-progress-step" data-step="3">Knowledge</li>
+            <li class="wizard-progress-step" data-step="4">Test call</li>
+            <li class="wizard-progress-step" data-step="5">Done</li>
+          </ol>
+
+          <div id="wizard-step-1" class="wizard-step active">
+            <h3>Step 1 — Connect</h3>
+            <p>Log in above with email/password or paste a JWT, then continue.</p>
+            <div id="wizard-auth-status" class="card-sub">Not connected</div>
+          </div>
+
+          <div id="wizard-step-2" class="wizard-step hidden">
+            <h3>Step 2 — Choose agent preset</h3>
+            <p>Apply a policy bundle as your active agent configuration.</p>
+            <div id="wizard-presets" class="preset-grid"></div>
+            <div id="wizard-preset-status" class="card-sub">Select a preset to continue.</div>
+          </div>
+
+          <div id="wizard-step-3" class="wizard-step hidden">
+            <h3>Step 3 — Add knowledge</h3>
+            <p>Upload at least one document so the agent can ground answers.</p>
+            <form id="wizard-knowledge-form" class="sso-form">
+              <label>
+                Collection name
+                <input id="wizard-collection-name" type="text" value="Support Docs" required />
+              </label>
+              <label class="full-width">
+                Document
+                <input id="wizard-knowledge-file" type="file" accept=".pdf,.txt,.md,.csv,.html,.docx" required />
+              </label>
+            </form>
+            <div id="wizard-knowledge-status" class="card-sub">No document uploaded yet.</div>
+          </div>
+
+          <div id="wizard-step-4" class="wizard-step hidden">
+            <h3>Step 4 — Run test call</h3>
+            <p>Runs the same programmatic voice pipeline used in production onboarding.</p>
+            <div id="wizard-sample-status" class="card-sub">Ready to run sample call.</div>
+          </div>
+
+          <div id="wizard-step-5" class="wizard-step hidden">
+            <h3>Step 5 — Verify</h3>
+            <div id="wizard-complete-status" class="card-sub">Test call passed.</div>
+            <div id="wizard-replay-summary" class="card-sub"></div>
+            <div class="button-row">
+              <button id="wizard-open-replay-btn" type="button" class="link-btn">Open full replay</button>
+              <button id="wizard-open-overview-btn" type="button" class="link-btn">View overview KPIs</button>
+            </div>
+          </div>
+
+          <div class="wizard-actions">
+            <button id="wizard-back-btn" type="button" disabled>Back</button>
+            <button id="wizard-next-btn" type="button">Continue</button>
+          </div>
+
+          <details class="wizard-advanced">
+            <summary>Advanced onboarding API</summary>
+            <div id="onboarding-status" class="card-sub">No onboarding run yet.</div>
+            <pre id="onboarding-json" class="json-preview"></pre>
+          </details>
         </div>
       </section>
 

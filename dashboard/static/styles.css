@@ -592,6 +592,92 @@ th { color: var(--muted); font-weight: 500; font-size: 0.75rem; text-transform: 
   gap: 0.35rem;
 }
 
+.wizard-panel { display: flex; flex-direction: column; gap: 1.25rem; }
+
+.wizard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.wizard-progress {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0;
+}
+
+.wizard-progress-step {
+  flex: 1;
+  min-width: 5rem;
+  text-align: center;
+  padding: 0.45rem 0.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.wizard-progress-step.active {
+  border-color: var(--accent);
+  color: var(--text);
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.wizard-progress-step.done {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.wizard-step h3 {
+  font-size: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.wizard-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.wizard-actions button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.55rem 1.1rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.wizard-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.wizard-actions #wizard-back-btn {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.preset-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.wizard-advanced {
+  margin-top: 0.5rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.wizard-advanced summary { cursor: pointer; margin-bottom: 0.5rem; }
+
 @media (max-width: 768px) {
   .layout { flex-direction: column; }
   .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; }
